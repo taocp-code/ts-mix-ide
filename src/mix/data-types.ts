@@ -19,7 +19,9 @@ export const MIX_WORD_SIZE = 5;
 export const SIGN_POSITIVE = 1;
 export const SIGN_NEGATIVE = -1;
 
+// field descriptors L*8 + R
 export const F_ALL = _mix_field_encode(0, MIX_WORD_SIZE);
+export const F_SIGN = _mix_field_encode(0, 0);
 export const F_OP_ADDR = _mix_field_encode(0, 2);
 export const F_OP_I = _mix_field_encode(3, 3);
 export const F_OP_F = _mix_field_encode(4, 4);
@@ -55,7 +57,7 @@ function _sign_of(v: number) {
  */
 export class MixWord {
     public static readonly ZERO = new MixWord(0);
-    private static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
+    public static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
     // array of bytes, including the sign byte.
     private _bytes: MixByte[];
 
@@ -66,6 +68,14 @@ export class MixWord {
         this._setAbsValue(value);
     }
 
+    static fromBytes(bytes: MixByte[]) {
+        if (bytes.length != MIX_WORD_SIZE + 1) throw new Error(`Invalid bytes length: ${bytes.length}.`);
+        const w = new MixWord();
+        w._bytes = bytes.slice(0, MIX_WORD_SIZE + 1)
+            .map((b, i) => i == 0 ? _sign_of(b) : Math.abs(b) % MIX_BYTE_MAX);
+        return w;
+    }
+
     get sign() {
         return this._bytes[0];
     }
@@ -74,8 +84,8 @@ export class MixWord {
     }
     get abs() {
         let x = 0;
-        for (let i = 0; i < MIX_WORD_SIZE; i++) {
-            x = x * MIX_BYTE_MAX + this._bytes[MIX_WORD_SIZE - i];
+        for (let i = 1; i <= MIX_WORD_SIZE; i++) {
+            x = x * MIX_BYTE_MAX + this._bytes[i];
         }
         return x;
     }
@@ -94,16 +104,16 @@ export class MixWord {
      * Load a MIX word from the field range.
      * @param f
      */
-    load(f: number): MixWord {
+    load(f: number = F_ALL): MixWord {
+        if (f == F_ALL) return MixWord.fromBytes(this._bytes);
         const {l, r} = _mix_field_decode(f);
-        const s = l == 0 ? this.sign : SIGN_POSITIVE;
-        let x = 0;
-        for (let i = r; i >= Math.max(l, 1); i--) {
-            x = x * MIX_BYTE_MAX + this._bytes[i];
+        const bytes : MixByte[] = [1, 0, 0, 0, 0, 0];
+        if (l == 0) bytes[l] = this._bytes[0];
+        for (let i = Math.max(1, l); i <= r; i++) {
+            bytes[MIX_WORD_SIZE - r + i] = this._bytes[i];
         }
-        return new MixWord(s * x);
+        return MixWord.fromBytes(bytes);
     }
-
     /**
      * Store a value into the MIX word, update bytes based on the field range.
      *
@@ -113,11 +123,13 @@ export class MixWord {
      * @param val the MIX word to store.
      * @param f field descriptor.
      */
-    store(val: MixWord, f: number = F_ALL) {
+    store(val: MixWord, f: number = F_ALL): MixWord {
         const {l, r} = _mix_field_decode(f);
-        for (let i = r - l; i >= 0; i--) {
-            this._bytes[l + i] = val._bytes[MIX_WORD_SIZE - r + i];
+        if (l == 0) this._bytes[0] = val.sign;
+        for (let i = Math.max(1, l); i <= r; i++) {
+            this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
         }
+        return this;
     }
 
     private _setAbsValue(v: number) {
