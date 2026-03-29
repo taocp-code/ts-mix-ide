@@ -64,17 +64,38 @@ export type MixWordChangeCallback = (e: MixWordChangeEvent) => void;
  *       | +/- | B1 | B2 | B3 | B4 | B5 |
  * Where B1 is the most significant byte, B5 is the least significant byte.
  */
-export class MixWord {
+export class MixWord implements Iterable<MixByte> {
     public static readonly ZERO = new MixWord(0);
     public static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
+    private readonly _label: string;
     // array of bytes, including the sign byte.
     private _bytes: MixByte[];
 
-    constructor(value: number = 0) {
+    constructor(value: number = 0, label: string = '') {
         // bytes[0] is sign, bytes[1] is the most significant byte, bytes[size] is the least significant byte.
+        this._label = label;
         this._bytes = new Array(MIX_WORD_SIZE + 1).fill(0);
         this._bytes[0] = _sign_of(value);
         this._setAbsValue(value);
+    }
+
+    [Symbol.iterator](): Iterator<number> {
+        let i = 1;
+        const self = this;
+        return {
+            next(): IteratorResult<number> {
+                if (i <= MIX_WORD_SIZE) {
+                    return {value: self._bytes[i++], done: false};
+                } else {
+                    return {value: undefined, done: true};
+                }
+            }
+        };
+    }
+
+    static initValue(random: boolean = false): MixWord {
+        if (!random) return MixWord.ZERO;
+        return new MixWord(Math.floor((Math.random() - 0.5) * 2 * MixWord.MAX_VALUE));
     }
 
     static fromBytes(bytes: MixByte[]) {
@@ -84,7 +105,9 @@ export class MixWord {
             .map((b, i) => i == 0 ? _sign_of(b) : Math.abs(b) % MIX_BYTE_MAX);
         return w;
     }
-
+    get label() {
+        return this._label;
+    }
     get sign() {
         return this._bytes[0];
     }
