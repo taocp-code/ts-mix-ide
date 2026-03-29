@@ -1,3 +1,5 @@
+import {MIX_EVENT_BUS} from "./mix-event-bus.ts";
+
 /**
  * Compare results.
  */
@@ -48,6 +50,13 @@ function _sign_of(v: number) {
     return v >= 0 ? SIGN_POSITIVE : SIGN_NEGATIVE;
 }
 
+export interface MixWordChangeEvent {
+    word: MixWord;
+    field: MixField;
+}
+
+export type MixWordChangeCallback = (e: MixWordChangeEvent) => void;
+
 /**
  * A MIX word, which is a 5-byte value with sign.
  * Word layout:
@@ -81,6 +90,7 @@ export class MixWord {
     }
     set sign(s: number) {
         this._bytes[0] = _sign_of(s);
+        this._emitChange({l: 0, r: 0});
     }
     get abs() {
         let x = 0;
@@ -91,6 +101,7 @@ export class MixWord {
     }
     set abs(v: number) {
         this._setAbsValue(v);
+        this._emitChange({l: 1, r: MIX_WORD_SIZE});
     }
     get value() {
         return this.sign * this.abs;
@@ -98,6 +109,7 @@ export class MixWord {
     set value(v: number) {
         this.sign = _sign_of(v);
         this._setAbsValue(v);
+        this._emitChange({l: 0, r: MIX_WORD_SIZE});
     }
 
     /**
@@ -129,7 +141,16 @@ export class MixWord {
         for (let i = Math.max(1, l); i <= r; i++) {
             this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
         }
+        this._emitChange({l, r});
         return this;
+    }
+
+    private _emitChange(field: MixField) {
+        const event: MixWordChangeEvent = {
+            word: this,
+            field: field,
+        };
+        MIX_EVENT_BUS.emit('word:change', event);
     }
 
     private _setAbsValue(v: number) {

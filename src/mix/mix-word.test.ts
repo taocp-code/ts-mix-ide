@@ -1,5 +1,6 @@
 import {expect, test} from 'vitest';
-import {_mix_field_encode, F_ALL, F_SIGN, MixWord} from "./data-types.ts";
+import {_mix_field_encode, F_ALL, F_SIGN, MixWord, type MixWordChangeEvent} from "./mix-word.ts";
+import {MIX_EVENT_BUS} from "./mix-event-bus.ts";
 
 test('mix word - construct from number', () => {
     let w = new MixWord(-42);
@@ -32,10 +33,13 @@ test('mix word - load', () => {
 test('mix word - store', () => {
     const v = MixWord.fromBytes([1, 6, 7, 8, 9, 0]);
     const w = MixWord.fromBytes([-1, 1, 2, 3, 4, 5]);
+    const events: MixWordChangeEvent[] = [];
+    MIX_EVENT_BUS.on('word:change', (e) => events.push(e));
     expect(w.load().store(v)).toStrictEqual(MixWord.fromBytes([1, 6, 7, 8, 9, 0]));
     expect(w.load().store(v, _mix_field_encode(1, 5))).toStrictEqual(MixWord.fromBytes([-1, 6, 7, 8, 9, 0]));
     expect(w.load().store(v, _mix_field_encode(5, 5))).toStrictEqual(MixWord.fromBytes([-1, 1, 2, 3, 4, 0]));
     expect(w.load().store(v, _mix_field_encode(2, 2))).toStrictEqual(MixWord.fromBytes([-1, 1, 0, 3, 4, 5]));
     expect(w.load().store(v, _mix_field_encode(2, 3))).toStrictEqual(MixWord.fromBytes([-1, 1, 9, 0, 4, 5]));
     expect(w.load().store(v, _mix_field_encode(0, 1))).toStrictEqual(MixWord.fromBytes([1, 0, 2, 3, 4, 5]));
+    expect(events).toHaveLength(6);
 });

@@ -1,4 +1,4 @@
-import {Compare, F_ALL, F_OP_ADDR, F_OP_CODE, F_OP_F, F_OP_I, MixWord} from "./data-types.ts";
+import {Compare, F_ALL, F_OP_ADDR, F_OP_CODE, F_OP_F, F_OP_I, MixWord} from "./mix-word.ts";
 
 /**
  * Decoded MIX op from a MIX word.
