@@ -2,18 +2,19 @@ table {
     border: 1px solid black;
     min-width: 100%;
 }
-table td {
+td {
     border: 1px solid silver;
     padding: 0;
     min-width: 20px;
     text-align: center;
     vertical-align: middle;
 }
-table th {
+th {
     text-align: right;
 }
-table td.sign {
+td.sign {
+    cursor: pointer;
 }
-
-table td.byte {
+td.byte {
+    cursor: pointer;
 }

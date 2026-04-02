@@ -1,6 +1,7 @@
 import './style.css'
 import {Mix} from "./mix/mix.ts";
-import {MIX_WORD_SIZE, type MixWord} from "./mix/mix-word.ts";
+import {_mix_field_encode, MIX_WORD_SIZE, type MixWord} from "./mix/mix-word.ts";
+import {MIX_EVENT_BUS} from "./mix/mix-event-bus.ts";
 
 const randomize = true;
 let mix: Mix = new Mix();
@@ -13,26 +14,52 @@ function init() {
 
 function render(mix: Mix, dom: HTMLDivElement) {
     dom.appendChild(document.createElement('h1')).textContent = 'MIX Simulator';
+    renderControls(mix, dom);
     renderStatus(mix, dom);
     renderRegisters(mix, dom);
     renderMemory(mix, dom);
+
+    MIX_EVENT_BUS.on('word:change', (e) => {
+        const fields = document.querySelectorAll(`td.label-${e.word.label}`);
+        fields[0].textContent = e.word.sign > 0 ? '+' : '-';
+        if (fields.length == 6) {
+            for (let i = 1; i < fields.length; i++) {
+                fields[i].textContent = e.word.load(_mix_field_encode(i, i)).abs.toFixed(0).padStart(2, '0');
+            }
+        } else if (fields.length == 3) {
+            for (let i = 1; i < fields.length; i++) {
+                fields[i].textContent = e.word.load(_mix_field_encode(i+3, i+3)).abs.toFixed(0).padStart(2, '0');
+            }
+        }
+    })
+}
+
+function renderControls(mix: Mix, dom: HTMLDivElement) {
+    const resetButton = document.createElement('button');
+    resetButton.textContent = 'Reset';
+    resetButton.addEventListener('click', () => {
+        mix.reset(randomize);
+    });
+    dom.appendChild(resetButton);
 }
 
 function renderWord(word: MixWord, tr: HTMLTableRowElement, size: number = MIX_WORD_SIZE+1) {
     const sign = document.createElement('td');
-    sign.className = 'sign';
+    sign.className = `sign label-${word.label} f-0`;
     tr.appendChild(sign).textContent = word.sign > 0 ? '+' : '-';
     let c = 0;
     const skip = MIX_WORD_SIZE + 1 - size;
     for (const b of word) {
         if (c++ < skip) continue;
         const td = document.createElement('td');
-        td.className = 'byte';
+        td.className = `byte label-${word.label} f-${c}`;
         tr.appendChild(td).textContent = b.toString(10).padStart(2, '0');
     }
 }
 
 function renderMemory(mix: Mix, dom: HTMLDivElement) {
+    dom.appendChild(document.createElement('h2')).textContent = 'Memory';
+
     const memTable = document.createElement('table');
     memTable.id = "memTable";
     dom.appendChild(memTable);
@@ -71,6 +98,7 @@ function renderMemory(mix: Mix, dom: HTMLDivElement) {
 }
 
 function renderRegisters(mix: Mix, dom: HTMLDivElement) {
+    dom.appendChild(document.createElement('h2')).textContent = 'Registers';
     const regTable = document.createElement('table');
     regTable.id = "regTable";
     dom.appendChild(regTable);
@@ -109,6 +137,7 @@ function renderRegisters(mix: Mix, dom: HTMLDivElement) {
 }
 
 function renderStatus(mix: Mix, dom: HTMLDivElement) {
+    dom.appendChild(document.createElement('h2')).textContent = 'Internal State';
     const statusTable = document.createElement('table');
     statusTable.id = "statusTable";
     statusTable.className = 'status';
