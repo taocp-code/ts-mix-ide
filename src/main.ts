@@ -32,26 +32,25 @@ function _formatByte(b: number): string {
     return b.toString(10).padStart(2, '0');
 }
 
-function renderWord(word: MixWord, tr: HTMLTableRowElement, size: number = MIX_WORD_SIZE) {
-    const uiFields: HTMLElement[] = [];
+function renderWord(word: MixWord, tr: HTMLTableRowElement) {
+    const byteUI: HTMLElement[] = [];
 
     const sign = document.createElement('td');
     sign.className = `sign label-${word.label} f-0`;
     tr.appendChild(sign).textContent = word.signLabel;
 
-    const L = size === MIX_WORD_SIZE ? 1 : 4;
+    const L = 1;
     for (let i = L; i <= MIX_WORD_SIZE; i++) {
         const td = document.createElement('td');
         td.className = `byte label-${word.label} f-${i}`;
-        uiFields.push(td);
+        byteUI.push(td);
         tr.appendChild(td).textContent = _formatByte(word.getByte(i));
     }
 
     word.onChange((e) => {
-        console.log('word change', e.word.label, size);
         sign.textContent = e.word.signLabel;
         for (let i = L; i <= MIX_WORD_SIZE; i++) {
-            uiFields[i - L].textContent = _formatByte(e.word.getByte(i));
+            byteUI[i - L].textContent = _formatByte(e.word.getByte(i));
         }
     })
 }
@@ -125,13 +124,13 @@ function renderRegisters(mix: Mix, dom: HTMLDivElement) {
     const contents = document.createElement('tr');
     renderWord(mix.rA, contents);
     renderWord(mix.rX, contents);
-    renderWord(mix.rI1, contents, 2);
-    renderWord(mix.rI2, contents, 2);
-    renderWord(mix.rI3, contents, 2);
-    renderWord(mix.rI4, contents, 2);
-    renderWord(mix.rI5, contents, 2);
-    renderWord(mix.rI6, contents, 2);
-    renderWord(mix.rJ, contents, 2);
+    renderWord(mix.rI1, contents);
+    renderWord(mix.rI2, contents);
+    renderWord(mix.rI3, contents);
+    renderWord(mix.rI4, contents);
+    renderWord(mix.rI5, contents);
+    renderWord(mix.rI6, contents);
+    renderWord(mix.rJ, contents);
     regTable.appendChild(contents);
 }
 

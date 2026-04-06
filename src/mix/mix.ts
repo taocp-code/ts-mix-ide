@@ -62,17 +62,17 @@ class MixMemory implements Iterable<MixWord> {
 
 export class Mix {
     private _memory: MixMemory = new MixMemory();
-    private _rA: MixWord = new MixWord(0, 'rA');
-    private _rX: MixWord = new MixWord(0, 'rX');
+    private _rA: MixWord = MixWord.newGeneralRegister('rA');
+    private _rX: MixWord = MixWord.newGeneralRegister('rX');
     private _rI: MixWord[] = [
-        new MixWord(0, 'rI1'),
-        new MixWord(0, 'rI2'),
-        new MixWord(0, 'rI3'),
-        new MixWord(0, 'rI4'),
-        new MixWord(0, 'rI5'),
-        new MixWord(0, 'rI6'),
+        MixWord.newIndexRegister('rI1'),
+        MixWord.newIndexRegister('rI2'),
+        MixWord.newIndexRegister('rI3'),
+        MixWord.newIndexRegister('rI4'),
+        MixWord.newIndexRegister('rI5'),
+        MixWord.newIndexRegister('rI6'),
     ];
-    private _rJ: MixWord = new MixWord(0, 'rIJ');
+    private _rJ: MixWord = MixWord.newIndexRegister('rIJ');
     private _overflow: boolean = false;
     private _compare: Compare = Compare.EQUAL;
     private _pc: number = 0;

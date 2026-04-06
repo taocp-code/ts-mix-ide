@@ -109,6 +109,14 @@ export class MixWord implements Iterable<MixByte> {
         return w;
     }
 
+    static newGeneralRegister(label: string) {
+        return new MixWord(0, label);
+    }
+
+    static newIndexRegister(label: string) {
+        return new MixWord(0, label, 4); // only bytes 4-5 are used.
+    }
+
     get label() {
         return this._label;
     }
@@ -140,6 +148,9 @@ export class MixWord implements Iterable<MixByte> {
         this.sign = _sign_of(v);
         this._setAbsValue(v);
         this._emitChange({l: 0, r: MIX_WORD_SIZE});
+    }
+    get left() {
+        return this._left;
     }
 
     /**
