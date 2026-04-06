@@ -28,31 +28,30 @@ function renderControls(mix: Mix, dom: HTMLDivElement) {
     dom.appendChild(resetButton);
 }
 
-function renderWord(word: MixWord, tr: HTMLTableRowElement, size: number = MIX_WORD_SIZE+1) {
+function _formatByte(b: number): string {
+    return b.toString(10).padStart(2, '0');
+}
+
+function renderWord(word: MixWord, tr: HTMLTableRowElement, size: number = MIX_WORD_SIZE) {
     const uiFields: HTMLElement[] = [];
+
     const sign = document.createElement('td');
     sign.className = `sign label-${word.label} f-0`;
-    tr.appendChild(sign).textContent = word.sign > 0 ? '+' : '-';
-    let c = 0;
-    const skip = MIX_WORD_SIZE + 1 - size;
-    for (const b of word) {
-        uiFields.push(document.createElement('td'));
-        if (c++ < skip) {
-            continue;
-        }
+    tr.appendChild(sign).textContent = word.signLabel;
+
+    const L = size === MIX_WORD_SIZE ? 1 : 4;
+    for (let i = L; i <= MIX_WORD_SIZE; i++) {
         const td = document.createElement('td');
-        td.className = `byte label-${word.label} f-${c}`;
+        td.className = `byte label-${word.label} f-${i}`;
         uiFields.push(td);
-        tr.appendChild(td).textContent = b.toString(10).padStart(2, '0');
+        tr.appendChild(td).textContent = _formatByte(word.getByte(i));
     }
+
     word.onChange((e) => {
-        console.log('word change', e.word.label);
-        sign.textContent = e.word.sign > 0 ? '+' : '-';
-        let i = 0;
-        for (const b of e.word) {
-            console.log('byte change', e.field, b, i);
-            if (i++ < MIX_WORD_SIZE + 1 - size) continue;
-            uiFields[i-1].textContent = b.toString(10).padStart(2, '0');
+        console.log('word change', e.word.label, size);
+        sign.textContent = e.word.signLabel;
+        for (let i = L; i <= MIX_WORD_SIZE; i++) {
+            uiFields[i - L].textContent = _formatByte(e.word.getByte(i));
         }
     })
 }
@@ -126,13 +125,13 @@ function renderRegisters(mix: Mix, dom: HTMLDivElement) {
     const contents = document.createElement('tr');
     renderWord(mix.rA, contents);
     renderWord(mix.rX, contents);
-    renderWord(mix.rI1, contents, 3);
-    renderWord(mix.rI2, contents, 3);
-    renderWord(mix.rI3, contents, 3);
-    renderWord(mix.rI4, contents, 3);
-    renderWord(mix.rI5, contents, 3);
-    renderWord(mix.rI6, contents, 3);
-    renderWord(mix.rJ, contents, 3);
+    renderWord(mix.rI1, contents, 2);
+    renderWord(mix.rI2, contents, 2);
+    renderWord(mix.rI3, contents, 2);
+    renderWord(mix.rI4, contents, 2);
+    renderWord(mix.rI5, contents, 2);
+    renderWord(mix.rI6, contents, 2);
+    renderWord(mix.rJ, contents, 2);
     regTable.appendChild(contents);
 }
 

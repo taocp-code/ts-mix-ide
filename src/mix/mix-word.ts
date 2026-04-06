@@ -67,13 +67,16 @@ export class MixWord implements Iterable<MixByte> {
     public static readonly ZERO = new MixWord(0);
     public static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
     private readonly _label: string;
+    // leftmost byte of the word, 1-based, could be 1 for normal words or 4 for rI* and rJ.
+    private readonly _left: number;
     // array of bytes, including the sign byte.
     private _bytes: MixByte[];
     private _onChange: MixWordChangeCallback[] = [];
 
-    constructor(value: number = 0, label: string = '') {
+    constructor(value: number = 0, label: string = '', left: number = 1) {
         // bytes[0] is sign, bytes[1] is the most significant byte, bytes[size] is the least significant byte.
         this._label = label;
+        this._left = left;
         this._bytes = new Array(MIX_WORD_SIZE + 1).fill(0);
         this._bytes[0] = _sign_of(value);
         this._setAbsValue(value);
@@ -85,7 +88,7 @@ export class MixWord implements Iterable<MixByte> {
         return {
             next(): IteratorResult<number> {
                 if (i <= MIX_WORD_SIZE) {
-                    return {value: self._bytes[i++], done: false};
+                    return {value: i < self._left ? 0 : self._bytes[i++], done: false};
                 } else {
                     return {value: undefined, done: true};
                 }
@@ -105,11 +108,15 @@ export class MixWord implements Iterable<MixByte> {
             .map((b, i) => i == 0 ? _sign_of(b) : Math.abs(b) % MIX_BYTE_MAX);
         return w;
     }
+
     get label() {
         return this._label;
     }
     get sign() {
         return this._bytes[0];
+    }
+    get signLabel() : string {
+        return this.sign == SIGN_POSITIVE ? '+' : '-';
     }
     set sign(s: number) {
         this._bytes[0] = _sign_of(s);
@@ -135,6 +142,19 @@ export class MixWord implements Iterable<MixByte> {
         this._emitChange({l: 0, r: MIX_WORD_SIZE});
     }
 
+    /**
+     * Get value at byte index (1-5)
+     * @param i 1-based index of the byte.
+     */
+    getByte(i: number) {
+        if (i <= 0 || i > MIX_WORD_SIZE) throw new Error(`Invalid byte index: ${i}.`);
+        return i < this._left ? 0 : this._bytes[i];
+    }
+
+    /**
+     * Add event listener for change to the word.
+     * @param callback
+     */
     onChange(callback: MixWordChangeCallback) {
         this._onChange.push(callback);
     }
@@ -149,7 +169,7 @@ export class MixWord implements Iterable<MixByte> {
         const bytes : MixByte[] = [1, 0, 0, 0, 0, 0];
         if (l == 0) bytes[l] = this._bytes[0];
         for (let i = Math.max(1, l); i <= r; i++) {
-            bytes[MIX_WORD_SIZE - r + i] = this._bytes[i];
+            bytes[MIX_WORD_SIZE - r + i] = this.getByte(i);
         }
         return MixWord.fromBytes(bytes);
     }
@@ -166,7 +186,9 @@ export class MixWord implements Iterable<MixByte> {
         const {l, r} = _mix_field_decode(f);
         if (l == 0) this._bytes[0] = val.sign;
         for (let i = Math.max(1, l); i <= r; i++) {
-            this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
+            if (i >= this._left) {
+                this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
+            }
         }
         this._emitChange({l, r});
         return this;
