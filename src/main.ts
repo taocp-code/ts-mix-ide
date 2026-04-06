@@ -1,7 +1,6 @@
 import './style.css'
 import {Mix} from "./mix/mix.ts";
 import {_mix_field_encode, MIX_WORD_SIZE, type MixWord} from "./mix/mix-word.ts";
-import {MIX_EVENT_BUS} from "./mix/mix-event-bus.ts";
 
 const randomize = true;
 let mix: Mix = new Mix();
@@ -18,20 +17,6 @@ function render(mix: Mix, dom: HTMLDivElement) {
     renderStatus(mix, dom);
     renderRegisters(mix, dom);
     renderMemory(mix, dom);
-
-    MIX_EVENT_BUS.on('word:change', (e) => {
-        const fields = document.querySelectorAll(`td.label-${e.word.label}`);
-        fields[0].textContent = e.word.sign > 0 ? '+' : '-';
-        if (fields.length == 6) {
-            for (let i = 1; i < fields.length; i++) {
-                fields[i].textContent = e.word.load(_mix_field_encode(i, i)).abs.toFixed(0).padStart(2, '0');
-            }
-        } else if (fields.length == 3) {
-            for (let i = 1; i < fields.length; i++) {
-                fields[i].textContent = e.word.load(_mix_field_encode(i+3, i+3)).abs.toFixed(0).padStart(2, '0');
-            }
-        }
-    })
 }
 
 function renderControls(mix: Mix, dom: HTMLDivElement) {
@@ -44,17 +29,32 @@ function renderControls(mix: Mix, dom: HTMLDivElement) {
 }
 
 function renderWord(word: MixWord, tr: HTMLTableRowElement, size: number = MIX_WORD_SIZE+1) {
+    const uiFields: HTMLElement[] = [];
     const sign = document.createElement('td');
     sign.className = `sign label-${word.label} f-0`;
     tr.appendChild(sign).textContent = word.sign > 0 ? '+' : '-';
     let c = 0;
     const skip = MIX_WORD_SIZE + 1 - size;
     for (const b of word) {
-        if (c++ < skip) continue;
+        uiFields.push(document.createElement('td'));
+        if (c++ < skip) {
+            continue;
+        }
         const td = document.createElement('td');
         td.className = `byte label-${word.label} f-${c}`;
+        uiFields.push(td);
         tr.appendChild(td).textContent = b.toString(10).padStart(2, '0');
     }
+    word.onChange((e) => {
+        console.log('word change', e.word.label);
+        sign.textContent = e.word.sign > 0 ? '+' : '-';
+        let i = 0;
+        for (const b of e.word) {
+            console.log('byte change', e.field, b, i);
+            if (i++ < MIX_WORD_SIZE + 1 - size) continue;
+            uiFields[i-1].textContent = b.toString(10).padStart(2, '0');
+        }
+    })
 }
 
 function renderMemory(mix: Mix, dom: HTMLDivElement) {

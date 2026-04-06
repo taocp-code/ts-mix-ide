@@ -1,4 +1,3 @@
-import {MIX_EVENT_BUS} from "./mix-event-bus.ts";
 
 /**
  * Compare results.
@@ -70,6 +69,7 @@ export class MixWord implements Iterable<MixByte> {
     private readonly _label: string;
     // array of bytes, including the sign byte.
     private _bytes: MixByte[];
+    private _onChange: MixWordChangeCallback[] = [];
 
     constructor(value: number = 0, label: string = '') {
         // bytes[0] is sign, bytes[1] is the most significant byte, bytes[size] is the least significant byte.
@@ -135,6 +135,10 @@ export class MixWord implements Iterable<MixByte> {
         this._emitChange({l: 0, r: MIX_WORD_SIZE});
     }
 
+    onChange(callback: MixWordChangeCallback) {
+        this._onChange.push(callback);
+    }
+
     /**
      * Load a MIX word from the field range.
      * @param f
@@ -173,7 +177,7 @@ export class MixWord implements Iterable<MixByte> {
             word: this,
             field: field,
         };
-        MIX_EVENT_BUS.emit('word:change', event);
+        this._onChange.forEach(c => c(event));
     }
 
     private _setAbsValue(v: number) {
