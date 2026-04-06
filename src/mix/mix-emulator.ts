@@ -1,33 +1,4 @@
-import {Compare, F_ALL, F_OP_ADDR, F_OP_CODE, F_OP_F, F_OP_I, MixWord} from "./mix-word.ts";
-
-/**
- * Decoded MIX op from a MIX word.
- */
-interface MixOp {
-    // OP code
-    c: number;
-    // Field desc, usually 8 * L + R or other meanings.
-    f: number;
-    // Index register, 0-6
-    i: number;
-    // Address value, sign and bytes 1-3
-    a: MixWord;
-}
-
-/**
- * OP code table
- */
-const OP_LDA = 8;
-const OP_STA = 9;
-
-function decodeOp(word: MixWord): MixOp {
-    return {
-        c: word.load(F_OP_CODE).value,
-        f: word.load(F_OP_F).value,
-        i: word.load(F_OP_I).value,
-        a: word.load(F_OP_ADDR),
-    }
-}
+import {Compare, F_ALL, MixWord} from "./mix-word.ts";
 
 
 class MixMemory implements Iterable<MixWord> {
@@ -60,7 +31,7 @@ class MixMemory implements Iterable<MixWord> {
     }
 }
 
-export class Mix {
+export class MixEmulator {
     private _memory: MixMemory = new MixMemory();
     private _rA: MixWord = MixWord.newGeneralRegister('rA');
     private _rX: MixWord = MixWord.newGeneralRegister('rX');
@@ -93,16 +64,7 @@ export class Mix {
     }
 
     step() {
-        const op = decodeOp(this._memory.load(this._pc));
-        this._pc++;
-        switch (op.c) {
-            case OP_LDA:
-                this.lda(op.f, op.i, op.a);
-                break;
-            case OP_STA:
-                this.sta(op.f, op.i, op.a);
-                break;
-        }
+        // TODO: finish implementation of all opcodes.
     }
 
     get overflow() {

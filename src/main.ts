@@ -1,9 +1,9 @@
 import './style.css'
-import {Mix} from "./mix/mix.ts";
+import {MixEmulator} from "./mix/mix-emulator.ts";
 import {_mix_field_encode, MIX_WORD_SIZE, type MixWord} from "./mix/mix-word.ts";
 
-const randomize = true;
-let mix: Mix = new Mix();
+let randomize = true;
+let mix: MixEmulator = new MixEmulator();
 
 function init() {
     mix.reset(randomize);
@@ -11,21 +11,49 @@ function init() {
     render(mix, app);
 }
 
-function render(mix: Mix, dom: HTMLDivElement) {
+function render(mix: MixEmulator, dom: HTMLDivElement) {
     dom.appendChild(document.createElement('h1')).textContent = 'MIX Simulator';
+    renderMIXAsmTextArea(dom);
     renderControls(mix, dom);
     renderStatus(mix, dom);
     renderRegisters(mix, dom);
     renderMemory(mix, dom);
 }
 
-function renderControls(mix: Mix, dom: HTMLDivElement) {
+function renderControls(mix: MixEmulator, dom: HTMLDivElement) {
     const resetButton = document.createElement('button');
     resetButton.textContent = 'Reset';
     resetButton.addEventListener('click', () => {
         mix.reset(randomize);
     });
     dom.appendChild(resetButton);
+
+    const randomizeCheckbox = document.createElement('input');
+    randomizeCheckbox.id = 'randomize';
+    randomizeCheckbox.type = 'checkbox';
+    randomizeCheckbox.checked = randomize;
+    randomizeCheckbox.addEventListener('change', (e) => {
+        randomize = (e.target as HTMLInputElement).checked;
+    });
+    dom.appendChild(randomizeCheckbox);
+    const randomizeLabel = document.createElement('label');
+    randomizeLabel.htmlFor = 'randomize';
+    randomizeLabel.textContent = 'Randomize';
+    dom.appendChild(randomizeLabel);
+}
+
+function renderMIXAsmTextArea(dom: HTMLDivElement) {
+    const container = document.createElement('div');
+    const title = document.createElement('h2');
+    container.appendChild(title).textContent = 'MIX Assembler';
+
+    const asmTextArea = document.createElement('textarea');
+    asmTextArea.id = 'asmTextArea';
+    asmTextArea.rows = 30;
+    asmTextArea.cols = 300;
+    asmTextArea.textContent = ``;
+    container.appendChild(asmTextArea);
+    dom.appendChild(container);
 }
 
 function _formatByte(b: number): string {
@@ -55,7 +83,7 @@ function renderWord(word: MixWord, tr: HTMLTableRowElement) {
     })
 }
 
-function renderMemory(mix: Mix, dom: HTMLDivElement) {
+function renderMemory(mix: MixEmulator, dom: HTMLDivElement) {
     dom.appendChild(document.createElement('h2')).textContent = 'Memory';
 
     const memTable = document.createElement('table');
@@ -95,7 +123,7 @@ function renderMemory(mix: Mix, dom: HTMLDivElement) {
     }
 }
 
-function renderRegisters(mix: Mix, dom: HTMLDivElement) {
+function renderRegisters(mix: MixEmulator, dom: HTMLDivElement) {
     dom.appendChild(document.createElement('h2')).textContent = 'Registers';
     const regTable = document.createElement('table');
     regTable.id = "regTable";
@@ -134,7 +162,7 @@ function renderRegisters(mix: Mix, dom: HTMLDivElement) {
     regTable.appendChild(contents);
 }
 
-function renderStatus(mix: Mix, dom: HTMLDivElement) {
+function renderStatus(mix: MixEmulator, dom: HTMLDivElement) {
     dom.appendChild(document.createElement('h2')).textContent = 'Internal State';
     const statusTable = document.createElement('table');
     statusTable.id = "statusTable";
