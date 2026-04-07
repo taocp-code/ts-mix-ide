@@ -419,13 +419,6 @@ export const MixOpCodes: MixOpCode[] = [
         f: 0,
     },
     {
-        name: 'IN',
-        description: 'Input from device F',
-        c: 36,
-        t: 1,
-        f: 0,
-    },
-    {
         name: 'OUT',
         description: 'Output to device F',
         c: 37,
@@ -582,6 +575,15 @@ export const MixOpCodes: MixOpCode[] = [
         f: _mix_field_encode(0, 5),
     },
 ];
+
+export const MixOpCodeMap: Record<string, MixOpCode> = {};
+
+for (const op of MixOpCodes) {
+    if (op.name in MixOpCodeMap) {
+        throw new Error(`Duplicate op code: ${op.name}`);
+    }
+    MixOpCodeMap[op.name] = op;
+}
 
 function getOpCode(code: number, field: number): MixOpCode | undefined {
     const codes = MixOpCodes.filter((op) => op.c === code);

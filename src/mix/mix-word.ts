@@ -56,6 +56,8 @@ export interface MixWordChangeEvent {
 
 export type MixWordChangeCallback = (e: MixWordChangeEvent) => void;
 
+export class MixWordOverflowError extends Error {}
+
 /**
  * A MIX word, which is a 5-byte value with sign.
  * Word layout:
@@ -215,7 +217,7 @@ export class MixWord implements Iterable<MixByte> {
 
     private _setAbsValue(v: number) {
         v = Math.abs(v);
-        if (v > MixWord.MAX_VALUE) throw new Error(`Value too large: ${v}.`);
+        if (v > MixWord.MAX_VALUE) throw new MixWordOverflowError(`Value too large: ${v}`);
         for (let i = 0; i < MIX_WORD_SIZE; i++) {
             this._bytes[MIX_WORD_SIZE - i] = v % MIX_BYTE_MAX;
             v = Math.floor(v / MIX_BYTE_MAX);

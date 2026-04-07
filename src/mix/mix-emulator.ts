@@ -1,4 +1,5 @@
-import {Compare, F_ALL, MixWord} from "./mix-word.ts";
+import {Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
+import {decode, type MixOperation} from "./mix-opcodes.ts";
 
 
 class MixMemory implements Iterable<MixWord> {
@@ -31,6 +32,21 @@ class MixMemory implements Iterable<MixWord> {
     }
 }
 
+export type MixOpFunc = (op: MixOperation) => void;
+
+export interface MixState {
+    pc: number;
+    overflow: boolean;
+    compare: Compare;
+}
+
+export interface MixStateChangeEvent {
+    oldState: MixState;
+    newState: MixState;
+}
+
+export type MixStateChangeCallback = (e: MixStateChangeEvent) => void;
+
 export class MixEmulator {
     private _memory: MixMemory = new MixMemory();
     private _rA: MixWord = MixWord.newGeneralRegister('rA');
@@ -47,9 +63,34 @@ export class MixEmulator {
     private _overflow: boolean = false;
     private _compare: Compare = Compare.EQUAL;
     private _pc: number = 0;
+    private _cycles: number = 0;
+    private _stateChangeCallback: MixStateChangeCallback[] = [];
+
+    private operations: Record<string, MixOpFunc> = {
+        NOP: (_: MixOperation) => {
+            // do nothing
+        },
+        ADD: (op: MixOperation) => {
+            const M = this.getM(op.i, op.a);
+            const V = this._memory.load(M, op.f).value;
+            try {
+                this._rA.value = this._rA.value + V;
+            } catch (e: any) {
+                if (e instanceof MixWordOverflowError) {
+                    this._overflow = true;
+                } else {
+                    throw e;
+                }
+            }
+        },
+    };
 
     constructor() {
         this.reset();
+    }
+
+    onStateChange(callback: MixStateChangeCallback) {
+        this._stateChangeCallback.push(callback);
     }
 
     reset(random: boolean = false) {
@@ -64,7 +105,24 @@ export class MixEmulator {
     }
 
     step() {
-        // TODO: finish implementation of all opcodes.
+        const oldState = this.copyState();
+
+        const op = decode(this._memory.load(this._pc++));
+        const func = this.operations[op.opcode?.name!];
+        func(op);
+        if (op.opcode?.t instanceof Number) {
+            this._cycles += op.opcode?.t as number;
+        }
+        if (op.opcode?.t instanceof Function) {
+            this._cycles += op.opcode?.t(op);
+        }
+
+        const newState = this.copyState();
+        const event: MixStateChangeEvent = {
+            oldState: oldState,
+            newState: newState,
+        };
+        this._stateChangeCallback.forEach(c => c(event));
     }
 
     get overflow() {
@@ -119,14 +177,11 @@ export class MixEmulator {
         return rI.value + a.value;
     }
 
-    private lda(f: number, i: number, a: MixWord) {
-        const M = this.getM(i, a);
-        const content = this._memory.load(M, f);
-        this._rA.store(content);
-    }
-
-    private sta(f: number, i: number, a: MixWord) {
-        const M = this.getM(i, a);
-        this._memory.store(M, this._rA, f);
+    private copyState(): MixState {
+        return {
+            pc: this._pc,
+            overflow: this._overflow,
+            compare: this._compare,
+        }
     }
 }

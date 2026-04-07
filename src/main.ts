@@ -1,12 +1,24 @@
 import './style.css'
 import {MixEmulator} from "./mix/mix-emulator.ts";
-import {_mix_field_encode, MIX_WORD_SIZE, type MixWord} from "./mix/mix-word.ts";
+import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
 
-let randomize = true;
+let randomize = false;
 let mix: MixEmulator = new MixEmulator();
 
+function reset() {
+    try {
+        mix.reset(randomize);
+        mix.memory.store(0, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
+        mix.memory.store(1, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
+        mix.memory.store(2, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
+        mix.memory.store(3, new MixWord(MixWord.MAX_VALUE));
+    } catch (e: any) {
+        console.error(e);
+    }
+}
+
 function init() {
-    mix.reset(randomize);
+    reset();
     const app = document.querySelector<HTMLDivElement>("#app")!;
     render(mix, app);
 }
@@ -24,9 +36,16 @@ function renderControls(mix: MixEmulator, dom: HTMLDivElement) {
     const resetButton = document.createElement('button');
     resetButton.textContent = 'Reset';
     resetButton.addEventListener('click', () => {
-        mix.reset(randomize);
+        reset();
     });
     dom.appendChild(resetButton);
+
+    const stepButton = document.createElement('button');
+    stepButton.textContent = 'Step';
+    stepButton.addEventListener('click', () => {
+        mix.step();
+    });
+    dom.appendChild(stepButton);
 
     const randomizeCheckbox = document.createElement('input');
     randomizeCheckbox.id = 'randomize';
@@ -67,7 +86,7 @@ function renderWord(word: MixWord, tr: HTMLTableRowElement) {
     sign.className = `sign label-${word.label} f-0`;
     tr.appendChild(sign).textContent = word.signLabel;
 
-    const L = 1;
+    const L = word.left;
     for (let i = L; i <= MIX_WORD_SIZE; i++) {
         const td = document.createElement('td');
         td.className = `byte label-${word.label} f-${i}`;
@@ -177,18 +196,27 @@ function renderStatus(mix: MixEmulator, dom: HTMLDivElement) {
 
     const tr1 = document.createElement('tr');
     tr1.appendChild(document.createElement('td')).textContent = 'PC';
-    tr1.appendChild(document.createElement('td')).textContent = mix.pc.toString(10).padStart(4, '0');
+    const pc = document.createElement('td');
+    tr1.appendChild(pc).textContent = mix.pc.toString(10).padStart(4, '0');
     statusTable.appendChild(tr1);
 
     const tr2 = document.createElement('tr');
     tr2.appendChild(document.createElement('td')).textContent = 'CMP';
-    tr2.appendChild(document.createElement('td')).textContent = mix.compare.toString();
+    const cmp = document.createElement('td');
+    tr2.appendChild(cmp).textContent = mix.compare.toString();
     statusTable.appendChild(tr2);
 
     const tr3 = document.createElement('tr');
     tr3.appendChild(document.createElement('td')).textContent = 'OV';
-    tr3.appendChild(document.createElement('td')).textContent = mix.overflow.toString();
+    const ov = document.createElement('td');
+    tr3.appendChild(ov).textContent = mix.overflow.toString();
     statusTable.appendChild(tr3);
+
+    mix.onStateChange(({newState}) => {
+        pc.textContent = newState.pc.toString(10).padStart(4, '0');
+        cmp.textContent = newState.compare.toString();
+        ov.textContent = newState.overflow.toString();
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);
