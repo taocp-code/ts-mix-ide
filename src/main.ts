@@ -1,26 +1,57 @@
 import './style.css'
 import {MixEmulator} from "./mix/mix-emulator.ts";
-import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
+import {_mix_field_encode, MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
+import {compile, type MIXProgram} from "./mix/mix-asm.ts";
+
+import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
+import {renderEditor} from "./editor.ts";
+import type {EditorView} from "@codemirror/view";
+import {EditorState} from "@codemirror/state";
 
 let randomize = false;
 let mix: MixEmulator = new MixEmulator();
+let editorView: EditorView|null = null;
+
+const program: MIXProgram = {
+    start: 1,
+    sections: [
+        {
+            offset: 1,
+            data: [
+                MixWord.fromOp(2000, 0, _mix_field_encode(0, 5), 8),
+                MixWord.fromOp(2000, 0, _mix_field_encode(1, 5), 8),
+            ]
+        },
+        {
+            offset: 2000,
+            data: [
+                MixWord.fromBytes([-1, 0, 80, 3, 5, 4])
+            ],
+        }
+    ]
+};
+
+function loadProgram() {
+    mix.loadProgram(program);
+}
 
 function reset() {
     try {
         mix.reset(randomize);
-        mix.memory.store(0, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
-        mix.memory.store(1, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
-        mix.memory.store(2, MixWord.fromBytes([1, 0, 3, 0, 5, 1])); // ADD 2000
-        mix.memory.store(3, new MixWord(MixWord.MAX_VALUE));
+        loadProgram();
+        if (editorView) editorView.setState(EditorState.create({
+            ...editorView.state,
+            doc: tableOfPrimes,
+        }));
     } catch (e: any) {
         console.error(e);
     }
 }
 
 function init() {
-    reset();
     const app = document.querySelector<HTMLDivElement>("#app")!;
     render(mix, app);
+    reset();
 }
 
 function render(mix: MixEmulator, dom: HTMLDivElement) {
@@ -33,6 +64,14 @@ function render(mix: MixEmulator, dom: HTMLDivElement) {
 }
 
 function renderControls(mix: MixEmulator, dom: HTMLDivElement) {
+    const compileButton = document.createElement('button');
+    compileButton.textContent = 'Compile';
+    compileButton.addEventListener('click', () => {
+        const program = compile(editorView?.state.doc.toString() || '');
+        mix.loadProgram(program);
+    });
+    dom.appendChild(compileButton);
+
     const resetButton = document.createElement('button');
     resetButton.textContent = 'Reset';
     resetButton.addEventListener('click', () => {
@@ -64,14 +103,8 @@ function renderControls(mix: MixEmulator, dom: HTMLDivElement) {
 function renderMIXAsmTextArea(dom: HTMLDivElement) {
     const container = document.createElement('div');
     const title = document.createElement('h2');
-    container.appendChild(title).textContent = 'MIX Assembler';
-
-    const asmTextArea = document.createElement('textarea');
-    asmTextArea.id = 'asmTextArea';
-    asmTextArea.rows = 30;
-    asmTextArea.cols = 300;
-    asmTextArea.textContent = ``;
-    container.appendChild(asmTextArea);
+    container.appendChild(title).textContent = 'MIX Asm';
+    editorView = renderEditor(tableOfPrimes, container);
     dom.appendChild(container);
 }
 

@@ -13,5 +13,10 @@
     "typescript": "~5.9.3",
     "vite": "^8.0.1",
     "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.41.0"
   }
 }

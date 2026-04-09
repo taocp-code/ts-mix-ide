@@ -1,5 +1,6 @@
 import {Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
+import type {MIXProgram} from "./mix-asm.ts";
 
 
 class MixMemory implements Iterable<MixWord> {
@@ -67,10 +68,10 @@ export class MixEmulator {
     private _stateChangeCallback: MixStateChangeCallback[] = [];
 
     private operations: Record<string, MixOpFunc> = {
-        NOP: (_: MixOperation) => {
+        "NOP": (_: MixOperation) => {
             // do nothing
         },
-        ADD: (op: MixOperation) => {
+        "ADD": (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f).value;
             try {
@@ -82,6 +83,84 @@ export class MixEmulator {
                     throw e;
                 }
             }
+        },
+        "LDA": (op: MixOperation) => {
+            this.load(op, this.rA);
+        },
+        "LDAN": (op: MixOperation) => {
+            this.load(op, this.rA, true);
+        },
+        "LDX": (op: MixOperation) => {
+            this.load(op, this.rX);
+        },
+        "LDXN": (op: MixOperation) => {
+            this.load(op, this.rX, true);
+        },
+        "LD1": (op: MixOperation) => {
+            this.load(op, this.rI1);
+        },
+        "LD2": (op: MixOperation) => {
+            this.load(op, this.rI2);
+        },
+        "LD3": (op: MixOperation) => {
+            this.load(op, this.rI3);
+        },
+        "LD4": (op: MixOperation) => {
+            this.load(op, this.rI4);
+        },
+        "LD5": (op: MixOperation) => {
+            this.load(op, this.rI5);
+        },
+        "LD6": (op: MixOperation) => {
+            this.load(op, this.rI6);
+        },
+        "LD1N": (op: MixOperation) => {
+            this.load(op, this.rI1, true);
+        },
+        "LD2N": (op: MixOperation) => {
+            this.load(op, this.rI2, true);
+        },
+        "LD3N": (op: MixOperation) => {
+            this.load(op, this.rI3, true);
+        },
+        "LD4N": (op: MixOperation) => {
+            this.load(op, this.rI4, true);
+        },
+        "LD5N": (op: MixOperation) => {
+            this.load(op, this.rI5, true);
+        },
+        "LD6N": (op: MixOperation) => {
+            this.load(op, this.rI6, true);
+        },
+        "STA": (op: MixOperation) => {
+            this.store(op, this.rA);
+        },
+        "STX": (op: MixOperation) => {
+            this.store(op, this.rX);
+        },
+        "STJ": (op: MixOperation) => {
+            this.store(op, this.rJ);
+        },
+        "STZ": (op: MixOperation) => {
+            this.store(op, MixWord.ZERO);
+        },
+        "ST1": (op: MixOperation) => {
+            this.store(op, this.rI1);
+        },
+        "ST2": (op: MixOperation) => {
+            this.store(op, this.rI2);
+        },
+        "ST3": (op: MixOperation) => {
+            this.store(op, this.rI3);
+        },
+        "ST4": (op: MixOperation) => {
+            this.store(op, this.rI4);
+        },
+        "ST5": (op: MixOperation) => {
+            this.store(op, this.rI5);
+        },
+        "ST6": (op: MixOperation) => {
+            this.store(op, this.rI6);
         },
     };
 
@@ -102,6 +181,21 @@ export class MixEmulator {
         this._overflow = false;
         this._compare = Compare.EQUAL;
         this._pc = 0;
+    }
+
+    loadProgram(program: MIXProgram) {
+        let addr = 0;
+        for (const section of program.sections) {
+            if (section.offset < addr) {
+                throw new Error(`Invalid program section offset: ${section.offset} cannot be less than cur address: ${addr}.`);
+            }
+            addr = section.offset;
+            for (const word of section.data) {
+                this._memory.store(addr++, word);
+            }
+        }
+        // point program counter to program start.
+        this._pc = program.start;
     }
 
     step() {
@@ -183,5 +277,17 @@ export class MixEmulator {
             overflow: this._overflow,
             compare: this._compare,
         }
+    }
+
+    private load(op: MixOperation, register: MixWord, neg: boolean = false) {
+        const M = this.getM(op.i, op.a);
+        const V = this._memory.load(M, op.f);
+        if (neg) V.sign = -V.sign;
+        register.store(V);
+    }
+
+    private store(op: MixOperation, register: MixWord) {
+        const M = this.getM(op.i, op.a);
+        this._memory.store(M, register, op.f);
     }
 }

@@ -111,6 +111,10 @@ export class MixWord implements Iterable<MixByte> {
         return w;
     }
 
+    static fromOp(a: number, i: number, f: number, c: number) {
+        return this.fromBytes([_sign_of(a), Math.floor(Math.abs(a) / MIX_BYTE_MAX), Math.abs(a) % MIX_BYTE_MAX, i, f, c]);
+    }
+
     static newGeneralRegister(label: string) {
         return new MixWord(0, label);
     }
