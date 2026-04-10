@@ -17,6 +17,7 @@ export type MixByte = number;
 export const MIX_BYTE_MAX = 100;
 // Number of bytes in a MIX word, excluding the sign.
 export const MIX_WORD_SIZE = 5;
+export const B = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE);
 export const SIGN_POSITIVE = 1;
 export const SIGN_NEGATIVE = -1;
 

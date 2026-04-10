@@ -493,7 +493,7 @@ class MIXAssembler {
                 const a = aExpr.eval(ctx);
                 const i = iExpr.eval(ctx) || 0;
                 const f = fExpr.eval(ctx) || opcode.f;
-                const w = MixWord.fromOp(a || -1, i, f, opcode.c);
+                const w = MixWord.fromOp(a === undefined ? -1 : a, i, f, opcode.c);
                 if (ctx.unresolvedReferences.length > 0) {
                     this._unresolvedReferences.push({
                         aExpr,

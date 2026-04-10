@@ -1,0 +1,21 @@
+X equ 1000
+  orig 1001
+  con 4
+  con 5
+  con 7
+  con 8
+  con 100
+  con 9
+  con 12
+  orig 3000
+START ENT1 7
+INIT ENT3 0,1
+     JMP CHANGEM
+LOOP CMPA X,3
+     JGE *+3
+CHANGEM ENT2 0,3
+     LDA X,3
+     DEC3 1
+     J3P LOOP
+     HLT
+     END START

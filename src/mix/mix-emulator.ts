@@ -1,4 +1,4 @@
-import {Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
+import {B, Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MIXProgram} from "./mix-asm.ts";
 
@@ -66,16 +66,21 @@ export class MixEmulator {
     private _pc: number = 0;
     private _cycles: number = 0;
     private _stateChangeCallback: MixStateChangeCallback[] = [];
+    private _halt: boolean = false;
 
     private operations: Record<string, MixOpFunc> = {
         "NOP": (_: MixOperation) => {
             // do nothing
+        },
+        "HLT": (_: MixOperation) => {
+            this._halt = true;
         },
         "ADD": (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f).value;
             try {
                 this._rA.value = this._rA.value + V;
+                this._overflow = false;
             } catch (e: any) {
                 if (e instanceof MixWordOverflowError) {
                     this._overflow = true;
@@ -83,6 +88,50 @@ export class MixEmulator {
                     throw e;
                 }
             }
+        },
+        "SUB": (op: MixOperation) => {
+            const M = this.getM(op.i, op.a);
+            const V = this._memory.load(M, op.f).value;
+            try {
+                this._rA.value = this._rA.value - V;
+                this._overflow = false;
+            } catch (e: any) {
+                if (e instanceof MixWordOverflowError) {
+                    this._overflow = true;
+                } else {
+                    throw e;
+                }
+            }
+        },
+        "DIV": (op: MixOperation) => {
+            const M = this.getM(op.i, op.a);
+            const V = this._memory.load(M, op.f);
+            if (V.value === 0 || this._rA.abs >= V.abs) {
+                this._overflow = true;
+                return;
+            }
+            const sign = this._rA.sign;
+            const vsign = V.sign;
+            const a = this._rA.abs;
+            const x = this._rX.abs;
+            const v = V.abs;
+            // (a * B + x) / V
+            const q = Math.floor(a * B / v + x / v);
+            const r = a * B + x - q * v;
+            this._rA.value = sign * vsign * q;
+            this._rX.value = sign * r;
+        },
+        "MUL": (op: MixOperation) => {
+            const M = this.getM(op.i, op.a);
+            const V = this._memory.load(M, op.f);
+            if (V.value === 0 || this._rA.abs >= V.abs) {
+                this._overflow = true;
+                return;
+            }
+            const sign = this._rA.sign * V.sign;
+            const p = this._rA.abs * V.abs;
+            this._rA.value = sign * Math.floor(p / B);
+            this._rX.value = sign * Math.floor(p % B);
         },
         "LDA": (op: MixOperation) => {
             this.load(op, this.rA);
@@ -162,7 +211,206 @@ export class MixEmulator {
         "ST6": (op: MixOperation) => {
             this.store(op, this.rI6);
         },
+        "ENTA": (op: MixOperation)=> {
+            this.ent(op, this.rA);
+        },
+        "ENNA": (op: MixOperation)=> {
+            this.ent(op, this.rA, true);
+        },
+        "ENTX": (op: MixOperation)=> {
+            this.ent(op, this.rX);
+        },
+        "ENNX": (op: MixOperation)=> {
+            this.ent(op, this.rX, true);
+        },
+        "ENT1": (op: MixOperation)=> {
+            this.ent(op, this.rI1);
+        },
+        "ENT2": (op: MixOperation)=> {
+            this.ent(op, this.rI2);
+        },
+        "ENT3": (op: MixOperation)=> {
+            this.ent(op, this.rI3);
+        },
+        "ENT4": (op: MixOperation)=> {
+            this.ent(op, this.rI4);
+        },
+        "ENT5": (op: MixOperation)=> {
+            this.ent(op, this.rI5);
+        },
+        "ENT6": (op: MixOperation)=> {
+            this.ent(op, this.rI6);
+        },
+        "ENN1": (op: MixOperation)=> {
+            this.ent(op, this.rI1, true);
+        },
+        "ENN2": (op: MixOperation)=> {
+            this.ent(op, this.rI2, true);
+        },
+        "ENN3": (op: MixOperation)=> {
+            this.ent(op, this.rI3, true);
+        },
+        "ENN4": (op: MixOperation)=> {
+            this.ent(op, this.rI4, true);
+        },
+        "ENN5": (op: MixOperation)=> {
+            this.ent(op, this.rI5, true);
+        },
+        "ENN6": (op: MixOperation)=> {
+            this.ent(op, this.rI6, true);
+        },
+        "INCA": (op: MixOperation)=> {
+            this.inc(op, this.rA);
+        },
+        "DECA": (op: MixOperation)=> {
+            this.inc(op, this.rA, true);
+        },
+        "INCX": (op: MixOperation)=> {
+            this.inc(op, this.rX);
+        },
+        "DECX": (op: MixOperation)=> {
+            this.inc(op, this.rX, true);
+        },
+        "INC1": (op: MixOperation)=> {
+            this.inc(op, this.rI1);
+        },
+        "DEC1": (op: MixOperation)=> {
+            this.inc(op, this.rI1, true);
+        },
+        "INC2": (op: MixOperation)=> {
+            this.inc(op, this.rI2);
+        },
+        "DEC2": (op: MixOperation)=> {
+            this.inc(op, this.rI2, true);
+        },
+        "INC3": (op: MixOperation)=> {
+            this.inc(op, this.rI3);
+        },
+        "DEC3": (op: MixOperation)=> {
+            this.inc(op, this.rI3, true);
+        },
+        "INC4": (op: MixOperation)=> {
+            this.inc(op, this.rI4);
+        },
+        "DEC4": (op: MixOperation)=> {
+            this.inc(op, this.rI4, true);
+        },
+        "INC5": (op: MixOperation)=> {
+            this.inc(op, this.rI5);
+        },
+        "DEC5": (op: MixOperation)=> {
+            this.inc(op, this.rI5, true);
+        },
+        "INC6": (op: MixOperation)=> {
+            this.inc(op, this.rI6);
+        },
+        "DEC6": (op: MixOperation)=> {
+            this.inc(op, this.rI6, true);
+        },
+        "CMPA": (op: MixOperation) => {
+            this.cmp(op, this.rA);
+        },
+        "CMPX": (op: MixOperation) => {
+            this.cmp(op, this.rX);
+        },
+        "CMP1": (op: MixOperation) => {
+            this.cmp(op, this.rI1);
+        },
+        "CMP2": (op: MixOperation) => {
+            this.cmp(op, this.rI2);
+        },
+        "CMP3": (op: MixOperation) => {
+            this.cmp(op, this.rI3);
+        },
+        "CMP4": (op: MixOperation) => {
+            this.cmp(op, this.rI4);
+        },
+        "CMP5": (op: MixOperation) => {
+            this.cmp(op, this.rI5);
+        },
+        "CMP6": (op: MixOperation) => {
+            this.cmp(op, this.rI6);
+        },
+        "JMP": (op: MixOperation) => {
+            this.jmp(op);
+        },
+        "JSJ": (op: MixOperation) => {
+            this.jmp(op, false);
+        },
+        "JOV": (op: MixOperation) => {
+            if (this._overflow) {
+                this.jmp(op);
+            }
+        },
+        "JNOV": (op: MixOperation)=> {
+            if (!this._overflow) {
+                this.jmp(op);
+            }
+        },
+        "JL": (op) => {
+            if (this._compare === Compare.LESS) {
+                this.jmp(op);
+            }
+        },
+        "JE": (op) => {
+            if (this._compare === Compare.EQUAL) {
+                this.jmp(op);
+            }
+        },
+        "JG": (op) => {
+            if (this._compare === Compare.GREATER) {
+                this.jmp(op);
+            }
+        },
+        "JGE": (op) => {
+            if (this._compare === Compare.GREATER || this._compare === Compare.EQUAL) {
+                this.jmp(op);
+            }
+        },
+        "JNE": (op) => {
+            if (this._compare !== Compare.EQUAL) {
+                this.jmp(op);
+            }
+        },
+        "JLE": (op) => {
+            if (this._compare === Compare.LESS || this._compare === Compare.EQUAL) {
+                this.jmp(op);
+            }
+        },
+        ...this.jmpRegisterOps('A', this._rA),
+        ...this.jmpRegisterOps('X', this._rX),
+        ...this.jmpRegisterOps('1', this.rI1),
+        ...this.jmpRegisterOps('2', this.rI2),
+        ...this.jmpRegisterOps('3', this.rI3),
+        ...this.jmpRegisterOps('4', this.rI4),
+        ...this.jmpRegisterOps('5', this.rI5),
+        ...this.jmpRegisterOps('6', this.rI6),
     };
+
+    private makeJmpRegisterFunc(cond: string, register: MixWord): MixOpFunc {
+        let predicate: () => boolean = () => false;
+        switch (cond) {
+            case 'N': predicate = () => register.value < 0; break;
+            case 'Z': predicate = () => register.value === 0; break;
+            case 'P': predicate = () => register.value > 0; break;
+            case 'NP': predicate = () => register.value <= 0; break;
+            case 'NN': predicate = () => register.value >= 0; break;
+            case 'NZ': predicate = () => register.value !== 0; break;
+        }
+        return (op: MixOperation) => {
+            if (predicate()) {
+                this.jmp(op);
+            }
+        };
+    }
+
+    private jmpRegisterOps(name: string, register: MixWord): Record<string, MixOpFunc> {
+        const ops: Record<string, MixOpFunc> = {};
+        for (const cond of ['N', 'P', 'Z', 'NN', 'NZ', 'NP']) {
+            ops[`J${name}${cond}`] = this.makeJmpRegisterFunc(cond, register);
+        }
+        return ops;
+    }
 
     constructor() {
         this.reset();
@@ -181,9 +429,12 @@ export class MixEmulator {
         this._overflow = false;
         this._compare = Compare.EQUAL;
         this._pc = 0;
+        this._halt = false;
     }
 
     loadProgram(program: MIXProgram) {
+        const oldState = this.copyState();
+
         let addr = 0;
         program.sections.sort((a, b) => a.offset - b.offset);
         for (const section of program.sections) {
@@ -197,13 +448,25 @@ export class MixEmulator {
         }
         // point program counter to program start.
         this._pc = program.start;
+        this.emitStateChange(oldState);
+    }
+
+    run() {
+        while (!this._halt) {
+            this.step();
+        }
     }
 
     step() {
+        if (this._halt) throw new Error('MIX Emulator halted, reset first.');
+
         const oldState = this.copyState();
 
         const op = decode(this._memory.load(this._pc++));
         const func = this.operations[op.opcode?.name!];
+        if (!func) {
+            throw new Error(`Undefined opcode: ${op.opcode?.name}!`);
+        }
         func(op);
         if (op.opcode?.t instanceof Number) {
             this._cycles += op.opcode?.t as number;
@@ -212,6 +475,10 @@ export class MixEmulator {
             this._cycles += op.opcode?.t(op);
         }
 
+        this.emitStateChange(oldState);
+    }
+
+    private emitStateChange(oldState: MixState) {
         const newState = this.copyState();
         const event: MixStateChangeEvent = {
             oldState: oldState,
@@ -259,6 +526,9 @@ export class MixEmulator {
     get memory() {
         return this._memory;
     }
+    get halt() {
+        return this._halt;
+    }
 
     private getI(i: number) {
         if (i == 0) return MixWord.ZERO;
@@ -286,9 +556,44 @@ export class MixEmulator {
         if (neg) V.sign = -V.sign;
         register.store(V);
     }
-
     private store(op: MixOperation, register: MixWord) {
         const M = this.getM(op.i, op.a);
         this._memory.store(M, register, op.f);
+    }
+    private ent(op: MixOperation, register: MixWord, neg: boolean = false) {
+        let M = this.getM(op.i, op.a);
+        if (M === 0) {
+            M = op.a.sign;
+        }
+        if (neg) M = -M;
+        register.store(new MixWord(M));
+    }
+    private inc(op: MixOperation, register: MixWord, neg: boolean = false) {
+        let M = this.getM(op.i, op.a);
+        if (neg) M = -M;
+        try {
+            register.value = register.value + M;
+            this._overflow = false;
+        } catch (e) {
+            if (e instanceof MixWordOverflowError) {
+                this._overflow = true;
+            } else throw e;
+        }
+    }
+    private jmp(op: MixOperation, setJ: boolean = true) {
+        if (setJ) this.rJ.value = this.pc;
+        this._pc = this.getM(op.i, op.a);
+    }
+    private cmp(op: MixOperation, register: MixWord) {
+        const M = this.getM(op.i, op.a);
+        const V = this._memory.load(M, op.f).value;
+        const rV = register.load(op.f).value;
+        if (V < rV) {
+            this._compare = Compare.GREATER;
+        } else if (V > rV) {
+            this._compare = Compare.LESS;
+        } else {
+            this._compare = Compare.EQUAL;
+        }
     }
 }
