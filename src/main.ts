@@ -68,6 +68,7 @@ function renderControls(mix: MixEmulator, dom: HTMLDivElement) {
     compileButton.textContent = 'Compile';
     compileButton.addEventListener('click', () => {
         const program = compile(editorView?.state.doc.toString() || '');
+        console.log(program);
         mix.loadProgram(program);
     });
     dom.appendChild(compileButton);

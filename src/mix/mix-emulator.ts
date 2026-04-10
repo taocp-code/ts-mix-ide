@@ -185,6 +185,7 @@ export class MixEmulator {
 
     loadProgram(program: MIXProgram) {
         let addr = 0;
+        program.sections.sort((a, b) => a.offset - b.offset);
         for (const section of program.sections) {
             if (section.offset < addr) {
                 throw new Error(`Invalid program section offset: ${section.offset} cannot be less than cur address: ${addr}.`);
