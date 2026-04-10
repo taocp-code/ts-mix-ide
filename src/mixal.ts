@@ -26,9 +26,6 @@ async function main() {
     const program = compile(content);
     const mix = new MixEmulator();
     mix.loadProgram(program);
-    for (const w of mix.memory) {
-        if (w.value !== 0) console.log(`${w.label}: ${w.value}`);
-    }
 }
 
 try {
