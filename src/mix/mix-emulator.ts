@@ -107,32 +107,33 @@ export class MixEmulator {
         "DIV": (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f);
-            if (V.value === 0 || this._rA.abs >= V.abs) {
+
+            const a = BigInt(this._rA.abs);
+            const v = BigInt(V.abs);
+            if (v === 0n || a >= v) {
                 this._overflow = true;
                 return;
             }
             const sign = this._rA.sign;
             const vsign = V.sign;
-            const a = this._rA.abs;
-            const x = this._rX.abs;
-            const v = V.abs;
+            const x = BigInt(this._rX.abs);
             // (a * B + x) / V
-            const q = Math.floor(a * B / v + x / v);
-            const r = a * B + x - q * v;
-            this._rA.value = sign * vsign * q;
-            this._rX.value = sign * r;
+            const q = (a * B + x) / v;
+            const r = (a * B + x) % v;
+            this._rA.abs = parseInt(q.toString());
+            this._rA.sign = sign * vsign;
+            this._rX.abs = parseInt(r.toString());
+            this._rX.sign = sign;
         },
         "MUL": (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f);
-            if (V.value === 0 || this._rA.abs >= V.abs) {
-                this._overflow = true;
-                return;
-            }
             const sign = this._rA.sign * V.sign;
-            const p = this._rA.abs * V.abs;
-            this._rA.value = sign * Math.floor(p / B);
-            this._rX.value = sign * Math.floor(p % B);
+            const p = BigInt(this._rA.abs) * BigInt(V.abs);
+            this._rA.abs = parseInt((p / B).toString());
+            this._rA.sign = sign;
+            this._rX.abs = parseInt((p % B).toString());
+            this._rX.sign = sign;
         },
         "LDA": (op: MixOperation) => {
             this.load(op, this.rA);
@@ -464,12 +465,15 @@ export class MixEmulator {
     }
 
     run(limit: number = -1) {
+        const st = performance.now();
         let c = 0;
         while (!this._halt) {
             this.step();
             c++;
             if (limit !== -1 && c > limit) break;
         }
+        const et = performance.now();
+        return c * 1000/(et-st);
     }
 
     step() {
@@ -478,7 +482,6 @@ export class MixEmulator {
         const oldState = this.copyState();
 
         const op = decode(this._memory.load(this._pc++));
-        console.log(`${this._pc - 1} : ${op.opcode?.name} ${op.a.value},${op.i}(${op.f})`)
         const func = this.operations[op.opcode?.name!];
         if (!func) {
             throw new Error(`Undefined opcode: ${op.opcode?.name}!`);
@@ -578,10 +581,11 @@ export class MixEmulator {
     }
     private ent(op: MixOperation, register: MixWord, neg: boolean = false) {
         let M = this.getM(op.i, op.a);
+        let m = new MixWord(M);
         if (M === 0) {
-            M = op.a.sign;
+            m.sign = op.a.sign;
         }
-        if (neg) M = -M;
+        if (neg) m.sign = -m.sign;
         register.store(new MixWord(M));
     }
     private inc(op: MixOperation, register: MixWord, neg: boolean = false) {
