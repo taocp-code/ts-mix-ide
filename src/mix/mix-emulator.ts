@@ -1,6 +1,7 @@
 import {B, Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MIXProgram} from "./mix-asm.ts";
+import {MixDevice} from "./mix-io.ts";
 
 
 class MixMemory implements Iterable<MixWord> {
@@ -385,6 +386,17 @@ export class MixEmulator {
         ...this.jmpRegisterOps('4', this.rI4),
         ...this.jmpRegisterOps('5', this.rI5),
         ...this.jmpRegisterOps('6', this.rI6),
+        // IO
+        "IOC": (_) => {
+            // TODO
+        },
+        "IN": (_) => {
+            // read data from device
+        },
+        "OUT": (op) => {
+            const M = this.getM(op.i, op.a);
+            MixDevice.DEVICES[op.f].output(M, this);
+        }
     };
 
     private makeJmpRegisterFunc(cond: string, register: MixWord): MixOpFunc {
@@ -451,9 +463,12 @@ export class MixEmulator {
         this.emitStateChange(oldState);
     }
 
-    run() {
+    run(limit: number = -1) {
+        let c = 0;
         while (!this._halt) {
             this.step();
+            c++;
+            if (limit !== -1 && c > limit) break;
         }
     }
 
@@ -463,6 +478,7 @@ export class MixEmulator {
         const oldState = this.copyState();
 
         const op = decode(this._memory.load(this._pc++));
+        console.log(`${this._pc - 1} : ${op.opcode?.name} ${op.a.value},${op.i}(${op.f})`)
         const func = this.operations[op.opcode?.name!];
         if (!func) {
             throw new Error(`Undefined opcode: ${op.opcode?.name}!`);

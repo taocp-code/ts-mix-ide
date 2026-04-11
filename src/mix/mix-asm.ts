@@ -256,20 +256,34 @@ export class Parser {
             const token = this.next();
             switch (token.type) {
                 case 'number':
-                    let t: Expr = new NumberExpr(token.value as number);
-                    if (unaryOp !== null) {
-                        t = new UnaryExpr(unaryOp, t);
-                        unaryOp = null;
-                    }
-                    if (expr !== null && op !== null) {
-                        expr = new BinaryExpr(expr, op, t);
-                        op = null;
-                    } else {
-                        expr = t;
+                    {
+                        let t: Expr = new NumberExpr(token.value as number);
+                        if (unaryOp !== null) {
+                            t = new UnaryExpr(unaryOp, t);
+                            unaryOp = null;
+                        }
+                        if (expr !== null && op !== null) {
+                            expr = new BinaryExpr(expr, op, t);
+                            op = null;
+                        } else {
+                            expr = t;
+                        }
                     }
                     break;
                 case 'symbol':
-                    expr = new SymbolExpr(token.value as string);
+                    {
+                        let t: Expr = new SymbolExpr(token.value as string);
+                        if (unaryOp !== null) {
+                            t = new UnaryExpr(unaryOp, t);
+                            unaryOp = null;
+                        }
+                        if (expr !== null && op !== null) {
+                            expr = new BinaryExpr(expr, op, t);
+                            op = null;
+                        } else {
+                            expr = t;
+                        }
+                    }
                     break;
                 case 'op':
                     if (expr === null || op !== null) {

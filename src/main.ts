@@ -1,7 +1,7 @@
 import './style.css'
 import {MixEmulator} from "./mix/mix-emulator.ts";
-import {_mix_field_encode, MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
-import {compile, type MIXProgram} from "./mix/mix-asm.ts";
+import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
+import {compile} from "./mix/mix-asm.ts";
 
 import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
 import {renderEditor} from "./editor.ts";
@@ -12,33 +12,9 @@ let randomize = false;
 let mix: MixEmulator = new MixEmulator();
 let editorView: EditorView|null = null;
 
-const program: MIXProgram = {
-    start: 1,
-    sections: [
-        {
-            offset: 1,
-            data: [
-                MixWord.fromOp(2000, 0, _mix_field_encode(0, 5), 8),
-                MixWord.fromOp(2000, 0, _mix_field_encode(1, 5), 8),
-            ]
-        },
-        {
-            offset: 2000,
-            data: [
-                MixWord.fromBytes([-1, 0, 80, 3, 5, 4])
-            ],
-        }
-    ]
-};
-
-function loadProgram() {
-    mix.loadProgram(program);
-}
-
 function reset() {
     try {
         mix.reset(randomize);
-        loadProgram();
         if (editorView) editorView.setState(EditorState.create({
             ...editorView.state,
             doc: tableOfPrimes,

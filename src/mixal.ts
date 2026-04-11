@@ -26,8 +26,10 @@ async function main() {
     const program = compile(content);
     const mix = new MixEmulator();
     mix.loadProgram(program);
+    mix.onStateChange(() => {
+        console.log(`rI1 = ${mix.rI1.value}`);
+    });
     mix.run();
-    console.log("max value: ", mix.rA.value, "index: ", mix.rI2.value)
 }
 
 try {
