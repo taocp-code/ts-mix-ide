@@ -26,10 +26,9 @@ async function main() {
     const program = compile(content);
     const mix = new MixEmulator();
     mix.loadProgram(program);
-    mix.onStateChange(() => {
-        console.log(`rI1 = ${mix.rI1.value}`);
-    });
-    mix.run();
+    const ips = mix.run();
+    console.log(`${ips} IPS`);
+    console.log(`${mix.cycles} MIX cycles`);
 }
 
 try {

@@ -71,6 +71,7 @@ export class MixDevice {
 
     output(m: number, mix: MixEmulator) {
         if (this._type === MixDeviceType.PRINTER) {
+            const line: string[] = [];
             for (let j = 0; j < this._blockSize; j++) {
                 const word = mix.memory.load(m + j);
                 const bytes: number[] = [];
@@ -78,8 +79,9 @@ export class MixDevice {
                     bytes.push(word.getByte(l));
                 }
                 const text = decode(bytes);
-                console.log(`PRINTER: ${text}`);
+                line.push(text);
             }
+            console.log(line.join(''));
         } else {
             console.log()
         }

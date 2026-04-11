@@ -1,7 +1,8 @@
-import {B, Compare, F_ALL, MixWord, MixWordOverflowError} from "./mix-word.ts";
+import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MIXProgram} from "./mix-asm.ts";
 import {MixDevice} from "./mix-io.ts";
+import {NUMS} from "./mix-chars.ts";
 
 
 class MixMemory implements Iterable<MixWord> {
@@ -397,6 +398,31 @@ export class MixEmulator {
         "OUT": (op) => {
             const M = this.getM(op.i, op.a);
             MixDevice.DEVICES[op.f].output(M, this);
+        },
+        "CHAR": (_) => {
+            const rA = this._rA;
+            const bytes: number[] = [];
+            for (let i = 1; i <= MIX_WORD_SIZE; i++) {
+                const b = rA.getByte(i);
+                bytes.push(NUMS[Math.floor(b / 10).toString()]);
+                bytes.push(NUMS[Math.floor(b % 10).toString()]);
+            }
+            rA.store(MixWord.fromBytes([1, ...bytes.slice(0, 5)]), _mix_field_encode(1, MIX_WORD_SIZE));
+            this._rX.store(MixWord.fromBytes([1, ...bytes.slice(5)]), _mix_field_encode(1, MIX_WORD_SIZE));
+        },
+        "NUM": (_) => {
+            const rA = this._rA;
+            const rX = this._rX;
+            let v = 0;
+            for (const b of rA) {
+                const d = b % 10;
+                v = v * 10 + d;
+            }
+            for (const b of rX) {
+                const d = b % 10;
+                v = v * 10 + d;
+            }
+            this._rA.store(new MixWord(v), _mix_field_encode(1, MIX_WORD_SIZE));
         }
     };
 
@@ -487,7 +513,7 @@ export class MixEmulator {
             throw new Error(`Undefined opcode: ${op.opcode?.name}!`);
         }
         func(op);
-        if (op.opcode?.t instanceof Number) {
+        if (op.opcode?.t as number) {
             this._cycles += op.opcode?.t as number;
         }
         if (op.opcode?.t instanceof Function) {
@@ -547,6 +573,9 @@ export class MixEmulator {
     }
     get halt() {
         return this._halt;
+    }
+    get cycles() {
+        return this._cycles;
     }
 
     private getI(i: number) {
