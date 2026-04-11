@@ -60,15 +60,14 @@ export class MixDevice {
     get type(): MixDeviceType {
         return this._type;
     }
-
-    ioc(_: number) {
-
+    get ready(): boolean {
+        return true;
     }
-
+    ioc(_m: number, _mix: MixEmulator) {
+    }
     input(): MixWord[] {
         return [];
     }
-
     output(m: number, mix: MixEmulator) {
         if (this._type === MixDeviceType.PRINTER) {
             const line: string[] = [];

@@ -389,15 +389,33 @@ export class MixEmulator {
         ...this.jmpRegisterOps('5', this.rI5),
         ...this.jmpRegisterOps('6', this.rI6),
         // IO
-        "IOC": (_) => {
-            // TODO
+        "IOC": (op) => {
+            const M = this.getM(op.i, op.a);
+            MixDevice.DEVICES[op.f].ioc(M, this);
         },
-        "IN": (_) => {
+        "IN": (op) => {
             // read data from device
+            const M = this.getM(op.i, op.a);
+            const words = MixDevice.DEVICES[op.f].input();
+            let i = M;
+            for (const w of words) {
+                this._memory.store(i, w);
+                i++;
+            }
         },
         "OUT": (op) => {
             const M = this.getM(op.i, op.a);
             MixDevice.DEVICES[op.f].output(M, this);
+        },
+        "JRED": (op) => {
+            if (MixDevice.DEVICES[op.f].ready) {
+                this.jmp(op);
+            }
+        },
+        "JBUS": (op) => {
+            if (!MixDevice.DEVICES[op.f].ready) {
+                this.jmp(op);
+            }
         },
         "CHAR": (_) => {
             const rA = this._rA;
