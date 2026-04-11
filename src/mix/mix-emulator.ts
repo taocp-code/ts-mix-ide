@@ -388,6 +388,14 @@ export class MixEmulator {
         ...this.jmpRegisterOps('4', this.rI4),
         ...this.jmpRegisterOps('5', this.rI5),
         ...this.jmpRegisterOps('6', this.rI6),
+        "MOVE": (op) => {
+            const M = this.getM(op.i, op.a);
+            const dst = this.rI1.value;
+            for (let i = 0; i < op.f; i++) {
+                this.memory.store(dst + i, this.memory.load(M + i));
+            }
+            this.rI1.value = this.rI1.value + op.f;
+        },
         // IO
         "IOC": (op) => {
             const M = this.getM(op.i, op.a);
@@ -531,13 +539,11 @@ export class MixEmulator {
             throw new Error(`Undefined opcode: ${op.opcode?.name}!`);
         }
         func(op);
-        if (op.opcode?.t as number) {
+        if (typeof op.opcode?.t === 'function') {
+            this._cycles += op.opcode?.t(op);
+        } else if (op.opcode?.t as number) {
             this._cycles += op.opcode?.t as number;
         }
-        if (op.opcode?.t instanceof Function) {
-            this._cycles += op.opcode?.t(op);
-        }
-
         this.emitStateChange(oldState);
     }
 
