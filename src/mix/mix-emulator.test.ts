@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 import {MixEmulator} from "./mix-emulator.ts";
 import type {MIXProgram} from "./mix-asm.ts";
 import {MixWord} from "./mix-word.ts";
-import {MixOpCodeMap} from "./mix-opcodes.ts";
+import {MixOpCodeMap, MixOpCodes} from "./mix-opcodes.ts";
 
 function op(name: string, a: number = 0, i?: number, f?: number) {
     const opcode = MixOpCodeMap[name];
@@ -121,4 +121,45 @@ test('arithmetic operations - div', () => {
 
     runMixProgram(mix, divTwoNumbers(17, 0));
     expect(mix.overflow).toBe(true);
+});
+
+test('shift operations', () => {
+    const mix = new MixEmulator();
+    const rAs: MixWord[] = [];
+    const rXs: MixWord[] = [];
+    mix.rA.onChange((e) => {
+        rAs.push(new MixWord(e.word.value));
+    });
+    mix.rX.onChange((e) => {
+        rXs.push(new MixWord(e.word.value));
+    });
+    runMixProgram(mix, makeMixProgram([
+        MixWord.fromBytes([1, 1, 2, 3, 4, 5]),
+        MixWord.fromBytes([1, 6, 7, 8, 9, 10]),
+    ], [
+        op('LDA', 0),
+        op('LDX', 1),
+        op('SRAX', 1),
+        op('SLA', 2),
+        op('SRC', 4),
+        op('SRA', 2),
+        op('SLC', 501),
+    ]));
+});
+
+test('all operations - implemented', () => {
+    const mix = new MixEmulator();
+    const ops: string[] = [];
+    for (const opcode of MixOpCodes) {
+        if (opcode.name === 'FADD' || opcode.name === 'FSUB' || opcode.name === 'FMUL' || opcode.name === 'FDIV') continue;
+        mix.reset();
+        mix.memory.store(0, MixWord.fromOp(0, 0, opcode.f, opcode.c))
+        try {
+            mix.step();
+        } catch (err) {
+            ops.push(opcode.name);
+        }
+    }
+    console.log(ops);
+    expect(ops.length).toEqual(0);
 });

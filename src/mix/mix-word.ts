@@ -159,7 +159,9 @@ export class MixWord implements Iterable<MixByte> {
     get left() {
         return this._left;
     }
-
+    get bytes(): number[]{
+        return this._bytes;
+    }
     /**
      * Get value at byte index (1-5)
      * @param i 1-based index of the byte.

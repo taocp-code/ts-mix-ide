@@ -450,6 +450,126 @@ export class MixEmulator {
                 v = v * 10 + d;
             }
             this._rA.store(new MixWord(v), _mix_field_encode(1, MIX_WORD_SIZE));
+        },
+        "SLA": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytes = this._rA.bytes.slice();
+            if (M >= MIX_WORD_SIZE) {
+                this._rA.abs = 0;
+            } else {
+                for (let i = 1; i <= MIX_WORD_SIZE - M; i++) {
+                    bytes[i] = bytes[i + M];
+                }
+                for (let i = MIX_WORD_SIZE - M + 1; i <= MIX_WORD_SIZE; i++) {
+                    bytes[i] = 0;
+                }
+                this._rA.store(MixWord.fromBytes(bytes));
+            }
+        },
+        "SRA": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytes = this._rA.bytes.slice();
+            if (M >= MIX_WORD_SIZE) {
+                this._rA.abs = 0;
+            } else {
+                for (let i = MIX_WORD_SIZE; i > M; i--) {
+                    bytes[i] = bytes[i - M];
+                }
+                for (let i = 1; i <= M; i++) {
+                    bytes[i] = 0;
+                }
+                this._rA.store(MixWord.fromBytes(bytes));
+            }
+        },
+        "SRAX": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytesA = this._rA.bytes.slice(this._rA.left);
+            const bytesX = this._rX.bytes.slice(this._rX.left);
+            const bytes = [1, ...bytesA, ...bytesX];
+            if (M >= MIX_WORD_SIZE*2) {
+                this._rA.abs = 0;
+                this._rX.abs = 0;
+            } else {
+                for (let i = MIX_WORD_SIZE * 2; i > M; i--) {
+                    bytes[i] = bytes[i - M];
+                }
+                for (let i = 1; i <= M; i++) {
+                    bytes[i] = 0;
+                }
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+            }
+        },
+        "SLAX": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytesA = this._rA.bytes.slice(this._rA.left);
+            const bytesX = this._rX.bytes.slice(this._rX.left);
+            const bytes = [1, ...bytesA, ...bytesX];
+            if (M >= MIX_WORD_SIZE*2) {
+                this._rA.abs = 0;
+                this._rX.abs = 0;
+            } else {
+                for (let i = 1; i <= MIX_WORD_SIZE*2 - M; i++) {
+                    bytes[i] = bytes[i+M];
+                }
+                for (let i = MIX_WORD_SIZE*2 - M + 1; i <= MIX_WORD_SIZE * 2; i++) {
+                    bytes[i] = 0;
+                }
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+            }
+        },
+        "SLC": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytesA = this._rA.bytes.slice(this._rA.left);
+            const bytesX = this._rX.bytes.slice(this._rX.left);
+            let bytes = [...bytesA, ...bytesX];
+            let k = M % bytes.length;
+            if (k > 0) {
+                const b1 = bytes.slice(0, k);
+                const b2 = bytes.slice(k);
+                bytes = [1, ...b2, ...b1];
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+            }
+        },
+        "SRC": (op) => {
+            const M = this.getM(op.i, op.a);
+            if (M < 0) {
+                this._overflow = true;
+                return;
+            }
+            const bytesA = this._rA.bytes.slice(this._rA.left);
+            const bytesX = this._rX.bytes.slice(this._rX.left);
+            let bytes = [...bytesA, ...bytesX];
+            let k = bytes.length - (M % bytes.length);
+            if (k > 0) {
+                const b1 = bytes.slice(0, k);
+                const b2 = bytes.slice(k);
+                bytes = [1, ...b2, ...b1];
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+            }
         }
     };
 
