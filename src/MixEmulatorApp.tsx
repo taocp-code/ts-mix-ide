@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {MixEmulator} from "./mix/mix-emulator.ts";
-import {Box, Button, Container, List, ListItem, Stack, Typography} from "@mui/material";
+import {Box, Button, Container, Divider, Grid, Stack, Typography} from "@mui/material";
 import CodeMirror from '@uiw/react-codemirror';
 import {keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
@@ -81,14 +81,14 @@ function RenderMixMemory({mix}: {mix: MixEmulator}) {
     for (const w of mix.memory) {
         words.push(w);
     }
-    return <List>
+    return <Grid sx={{p: 1}} container={true} spacing={1}>
         {words.map((w) => {
-            return (<ListItem key={w.label}>
+            return (<Box key={w.label}>
                 <Typography>{w.label}</Typography>
                 <RenderMixWordValue word={w}/>
-            </ListItem>)
+            </Box>)
         })}
-    </List>
+    </Grid>
 }
 
 function MixEmulatorUI({mix}: {mix: MixEmulator}) {
@@ -120,7 +120,8 @@ function MixEmulatorUI({mix}: {mix: MixEmulator}) {
         <Box>
             <RenderMixState mix={mix}/>
         </Box>
-        <Box sx={{maxHeight: '500px', overflowY: 'auto'}}>
+        <Divider></Divider>
+        <Box sx={{maxHeight: '800px', overflowY: 'auto'}}>
             <RenderMixMemory mix={mix}/>
         </Box>
     </Box>)
@@ -147,8 +148,20 @@ function MixAsmEditor(props: {mix: MixEmulator}) {
                 Compile
             </Button>
             <Button onClick={() => {
+                mix.step();
+            }}>Step</Button>
+            <Button onClick={() => {
+                const p = compile(program);
+                mix.reset();
+                mix.loadProgram(p);
                 mix.run();
-            }}>Run</Button>
+            }}>Compile & Run</Button>
+            <Button onClick={() => {
+                mix.reset();
+            }}>
+                Reset
+            </Button>
+
         </Box>
         <CodeMirror value={program}
                     extensions={[keymap.of(emacsStyleKeymap), lineNumbers()]}
@@ -165,7 +178,7 @@ export function MixEmulatorApp() {
     const [mix] = useState(new MixEmulator());
 
     return (
-        <Container sx={{width: '100%'}} maxWidth={false}>
+        <Container sx={{width: '100%', maxHeight: '800px'}} maxWidth={false}>
             <Typography variant={'h4'}>The MIX Emulator</Typography>
             <Stack direction={"row"}>
                 <MixAsmEditor mix={mix}/>

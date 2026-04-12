@@ -64,6 +64,9 @@ export class MixDevice {
         return true;
     }
     ioc(_m: number, _mix: MixEmulator) {
+        if (this._type === MixDeviceType.PRINTER) {
+            console.log('==== Next Page ====')
+        }
     }
     input(): MixWord[] {
         return [];

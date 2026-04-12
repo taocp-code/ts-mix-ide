@@ -492,10 +492,15 @@ export class MixEmulator {
         this._rX.store(MixWord.initValue(random));
         this._rI.forEach(r => r.store(MixWord.initValue(random)));
         this._rJ.store(MixWord.initValue(random));
+
+        const oldState = this.copyState();
         this._overflow = false;
         this._compare = Compare.EQUAL;
         this._pc = 0;
         this._halt = false;
+        const newState = this.copyState();
+        const e = {oldState, newState};
+        this._stateChangeCallback.forEach(cb => cb(e));
     }
 
     loadProgram(program: MIXProgram) {
