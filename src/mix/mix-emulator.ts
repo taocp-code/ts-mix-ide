@@ -41,6 +41,7 @@ export interface MixState {
     pc: number;
     overflow: boolean;
     compare: Compare;
+    halt: boolean;
 }
 
 export interface MixStateChangeEvent {
@@ -619,6 +620,7 @@ export class MixEmulator {
             pc: this._pc,
             overflow: this._overflow,
             compare: this._compare,
+            halt: this._halt,
         }
     }
 

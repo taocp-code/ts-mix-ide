@@ -224,7 +224,7 @@ export class MixWord implements Iterable<MixByte> {
         v = Math.abs(v);
         if (v > MixWord.MAX_VALUE) throw new MixWordOverflowError(`Value too large: ${v}`);
         for (let i = 0; i < MIX_WORD_SIZE; i++) {
-            this._bytes[MIX_WORD_SIZE - i] = v % MIX_BYTE_MAX;
+            this._bytes[MIX_WORD_SIZE - i] = Math.floor(v % MIX_BYTE_MAX);
             v = Math.floor(v / MIX_BYTE_MAX);
         }
     }
