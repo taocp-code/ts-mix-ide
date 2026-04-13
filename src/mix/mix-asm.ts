@@ -5,9 +5,18 @@ import {F_OP_ADDR, F_OP_F, F_OP_I, MIX_BYTE_MAX, MIX_WORD_SIZE, MixWord} from ".
 import {MixOpCodeMap} from "./mix-opcodes.ts";
 import {encode} from "./mix-chars.ts";
 
+export interface MixSourceLine {
+    lineNo: number;
+    line: string;
+    loc: string;
+    op: string;
+    addr: string;
+}
+
 export interface MIXSection {
     offset: number;
     data: MixWord[];
+    lines: MixSourceLine[];
 }
 
 export interface MIXProgram {
@@ -444,6 +453,7 @@ class MIXAssembler {
         let cur: MIXSection = {
             offset: 0,
             data: [],
+            lines: [],
         };
         let start: number = 0;
         this._source.split('\n').forEach((line, lineIndex) => {
@@ -468,29 +478,36 @@ class MIXAssembler {
                     sections.push(cur);
                     cur = {
                         offset: this._counter,
-                        data: []
+                        data: [],
+                        lines: []
                     }
                 }
             } else if (op === 'CON') {
                 this.defineSymbol(loc, this._counter);
                 const w = new MixWord(parser.parseWValueExpr().eval(this.context));
                 cur.data.push(w);
+                cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
                 this._counter++;
             } else if (op === 'ALF') {
                 this.defineSymbol(loc, this._counter);
                 cur.data.push(MixWord.fromBytes([1, ...encode(addr)]));
+                cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
                 this._counter++;
             } else if (op === 'END') {
+                let lineNo = this._lineNo;
                 for (const lit of this._literals) {
                     cur.data.push(new MixWord(lit.value));
+                    cur.lines.push({lineNo, line: `CON ${lit.value}`, loc: '', op: 'CON', addr: `${lit.value}`});
                     lit.op.store(new MixWord(this._counter++), F_OP_ADDR);
+                    lineNo++;
                 }
                 this.defineSymbol(loc, this._counter);
                 for (const {undefinedSymbols} of this._unresolvedReferences) {
-                    console.log(`UR!`);
                     for (const symbol of undefinedSymbols) {
                         cur.data.push(new MixWord());
+                        cur.lines.push({lineNo, line: `${symbol} CON 0`, loc: symbol, op: 'CON', addr: '0'});
                         this.defineSymbol(symbol, this._counter++);
+                        lineNo++;
                     }
                 }
                 this.tryFixUnresolvedReferences()
@@ -526,6 +543,7 @@ class MIXAssembler {
                     })
                 }
                 cur.data.push(w);
+                cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
                 this._counter++
             }
             this.tryFixUnresolvedReferences();

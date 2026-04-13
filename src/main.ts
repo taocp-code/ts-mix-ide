@@ -7,6 +7,7 @@ import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
 import {renderEditor} from "./editor.ts";
 import type {EditorView} from "@codemirror/view";
 import {EditorState} from "@codemirror/state";
+import {formatNumber} from "./mix/utils.ts";
 
 let randomize = false;
 let mix: MixEmulator = new MixEmulator();
@@ -86,7 +87,7 @@ function renderMIXAsmTextArea(dom: HTMLDivElement) {
 }
 
 function _formatByte(b: number): string {
-    return b.toString(10).padStart(2, '0');
+    return formatNumber(b, 2);
 }
 
 function renderWord(word: MixWord, tr: HTMLTableRowElement) {
@@ -207,7 +208,7 @@ function renderStatus(mix: MixEmulator, dom: HTMLDivElement) {
     const tr1 = document.createElement('tr');
     tr1.appendChild(document.createElement('td')).textContent = 'PC';
     const pc = document.createElement('td');
-    tr1.appendChild(pc).textContent = mix.pc.toString(10).padStart(4, '0');
+    tr1.appendChild(pc).textContent = formatNumber(mix.pc, 4);
     statusTable.appendChild(tr1);
 
     const tr2 = document.createElement('tr');
@@ -223,7 +224,7 @@ function renderStatus(mix: MixEmulator, dom: HTMLDivElement) {
     statusTable.appendChild(tr3);
 
     mix.onStateChange(({newState}) => {
-        pc.textContent = newState.pc.toString(10).padStart(4, '0');
+        pc.textContent = formatNumber(newState.pc, 4);
         cmp.textContent = newState.compare.toString();
         ov.textContent = newState.overflow.toString();
     });

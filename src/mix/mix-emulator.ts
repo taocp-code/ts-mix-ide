@@ -3,8 +3,12 @@ import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MIXProgram} from "./mix-asm.ts";
 import {MixDevice} from "./mix-io.ts";
 import {NUMS} from "./mix-chars.ts";
+import {formatNumber} from "./utils.ts";
 
 
+/**
+ * MIX memory: an array of 4000 MIX words.
+ */
 class MixMemory implements Iterable<MixWord> {
     [Symbol.iterator](): Iterator<MixWord> {
         let index = 0;
@@ -21,7 +25,7 @@ class MixMemory implements Iterable<MixWord> {
     }
     public static readonly SIZE = 4000;
     private words: MixWord[] = [...new Array(MixMemory.SIZE).keys()]
-        .map((addr) => new MixWord(0, `${addr.toString(10).padStart(4, '0')}`));
+        .map((addr) => new MixWord(0, `${formatNumber(addr, 4)}`));
     load(addr: number, f: number=F_ALL): MixWord {
         if (addr < 0 || addr >= MixMemory.SIZE) throw new Error(`Invalid address: ${addr}.`);
         return this.words[addr].load(f);
@@ -674,12 +678,14 @@ export class MixEmulator {
     }
 
     private emitStateChange(oldState: MixState) {
-        const newState = this.copyState();
-        const event: MixStateChangeEvent = {
-            oldState: oldState,
-            newState: newState,
-        };
-        this._stateChangeCallback.forEach(c => c(event));
+        setTimeout(() => {
+            const newState = this.copyState();
+            const event: MixStateChangeEvent = {
+                oldState: oldState,
+                newState: newState,
+            };
+            this._stateChangeCallback.forEach(c => c(event));
+        });
     }
 
     get overflow() {
