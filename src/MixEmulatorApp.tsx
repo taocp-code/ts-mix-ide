@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {MixEmulator} from "./mix/mix-emulator.ts";
 import {
     Box,
@@ -8,7 +8,13 @@ import {
     Divider,
     Grid,
     IconButton,
-    Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
     Tooltip,
     Typography
 } from "@mui/material";
@@ -89,39 +95,51 @@ function RenderMixState({mix}: {mix: MixEmulator}) {
     >
         <Box sx={{p: 1}}>
             <Box>Program Counter</Box>
-            <Box sx={{borderWidth: 1, borderColor: "black", borderStyle: 'solid', p: 1}}>
+            <MonospacedBox>
                 {formatNumber(state.pc, 4)}
-            </Box>
+            </MonospacedBox>
         </Box>
         <Box sx={{p: 1}}>
             <Box>Overflow</Box>
-            <Box sx={{borderWidth: 1, borderColor: "black", borderStyle: 'solid', p: 1}}>
+            <MonospacedBox>
                 {formatBoolean(state.overflow)}
-            </Box>
+            </MonospacedBox>
         </Box>
         <Box sx={{p: 1}}>
             <Box>Compare</Box>
-            <Box sx={{borderWidth: 1, borderColor: "black", borderStyle: 'solid', p: 1}}>
-                {state.compare === 1 ? "GREATER" : (state.compare === -1 ? 'LESS' : 'EQUAL')}
-            </Box>
+            <MonospacedBox>
+                {state.compare === 1 ? ">" : (state.compare === -1 ? '<' : '=')}
+            </MonospacedBox>
         </Box>
         <Box sx={{p: 1}}>
-            <Box>Halt</Box>
-            <Box sx={{borderWidth: 1, borderColor: "black", borderStyle: 'solid', p: 1}}>
+            <Box>Halted?</Box>
+            <MonospacedBox>
                 {formatBoolean(state.halt, 'Halted', 'Running')}
-            </Box>
+            </MonospacedBox>
+        </Box>
+        <Box sx={{p: 1}}>
+            <Box>Cycles</Box>
+            <MonospacedBox>
+                {mix.cycles}
+            </MonospacedBox>
         </Box>
     </Box>
 }
 
-function RenderMixMemory({mix}: {mix: MixEmulator}) {
-    const words: MixWord[] = [];
-    for (const w of mix.memory) {
-        words.push(w);
-    }
+function RenderMixMemory({mix, highlightAddress}: {mix: MixEmulator, highlightAddress: number}) {
+    const words: MixWord[] = useMemo(() => {
+        console.log('building memory view: ')
+        const words = [];
+        for (const w of mix.memory) {
+            words.push(w);
+        }
+        return words;
+    }, [mix]);
+    console.log('Highlight address', highlightAddress);
+
     return <Grid sx={{p: 1}} container={true} spacing={1}>
         {words.map((w) => {
-            return (<Box key={w.label}>
+            return (<Box key={w.label} sx={{p: 0.5}}>
                 <Typography>{w.label}</Typography>
                 <RenderMixWordValue word={w}/>
             </Box>)
@@ -129,45 +147,25 @@ function RenderMixMemory({mix}: {mix: MixEmulator}) {
     </Grid>
 }
 
-function MixMachineView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXProgram|null}) {
+function MixMachineView({mix, mixProgram, highlightAddress}: {mix: MixEmulator, mixProgram: MIXProgram|null, highlightAddress: number}) {
     const [running, setRunning] = useState(false);
-    const [timer, setTimer] = useState<any>(null);
-
-    useEffect(() => {
-        if (running) {
-            if (timer === null) {
-                const run = () => {
-                    if (mix.halt) {
-                        setRunning(false);
-                        return;
-                    }
-                    mix.step();
-                };
-                const t = setInterval(run, 1);
-                setTimer(t);
-                return () => {
-                    clearInterval(t);
-                    setTimer(null);
-                }
-            }
-        } else {
-            if (timer !== null){
-                clearInterval(timer);
-                setTimer(null);
-            }
-        }
-    }, [running, timer]);
 
     return (<BoxViewSection>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
             <Tooltip title={'Step'}>
                 <IconButton sx={{color: 'blue'}} onClick={() => {
                     mix.step();
-                }}><RedoIcon/></IconButton>
+                }} disabled={running}><RedoIcon/></IconButton>
             </Tooltip>
             <Tooltip title={running ? 'Stop' : 'Run'}>
                 <IconButton sx={{color: running ? 'red' : 'green'}} onClick={() => {
-                    setRunning(!running);
+                    if (!running) {
+                        setRunning(true);
+                        mix.runAsync(50);
+                    } else {
+                        setRunning(false);
+                        mix.stopAsync();
+                    }
                 }}>{running ? <StopIcon/> : <PlayArrowIcon/>}</IconButton>
             </Tooltip>
             <Tooltip title={"Reset"}>
@@ -176,7 +174,7 @@ function MixMachineView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXPro
                     if (mixProgram !== null) {
                         mix.loadProgram(mixProgram);
                     }
-                }}><RestartAltIcon/></IconButton>
+                }} disabled={running}><RestartAltIcon/></IconButton>
             </Tooltip>
         </Box>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
@@ -197,13 +195,19 @@ function MixMachineView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXPro
         </Box>
         <Divider></Divider>
         <Box sx={{maxHeight: '800px', overflowY: 'auto'}}>
-            <RenderMixMemory mix={mix}/>
+            <RenderMixMemory mix={mix} highlightAddress={highlightAddress}/>
         </Box>
     </BoxViewSection>)
 }
 
-function MixAsmEditor(props: {onCompile: (_: MIXProgram)=>void}) {
+const extensions = [keymap.of(emacsStyleKeymap), lineNumbers()];
+
+function MixAsmEditor(props: {onCompile: (_: MIXProgram)=>void, lineNo: number}) {
     const [code, setCode] = useState(tableOfPrimes);
+    useEffect(() => {
+        const p = compile(code);
+        props.onCompile(p);
+    }, []);
     return (<BoxViewSection>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
             <Button onClick={() => {
@@ -214,7 +218,7 @@ function MixAsmEditor(props: {onCompile: (_: MIXProgram)=>void}) {
             </Button>
         </Box>
         <CodeMirror value={code}
-                    extensions={[keymap.of(emacsStyleKeymap), lineNumbers()]}
+                    extensions={extensions}
                     height={'auto'}
                     minHeight={'800px'}
                     onChange={(value) => {
@@ -224,17 +228,22 @@ function MixAsmEditor(props: {onCompile: (_: MIXProgram)=>void}) {
     </BoxViewSection>)
 }
 
-function MixProgramSection({section, pc}: {section: MIXSection, pc: number}) {
+function MixProgramSection({section, pc, onHoverLine}: {section: MIXSection, pc: number, onHoverLine: (lineNo: number, addres: number) => void|undefined}) {
     const dataAndSource = section.data.map((w, i) => {
         return {label: formatNumber(section.offset + i, 4), addr: section.offset + i, word: w, source: section.lines[i]};
     });
-    console.log('mix program section render!')
     return (
         <TableBody>
         {dataAndSource.map((line) => {
             const {label, addr, word, source} = line;
             const cur = pc === addr;
-            return <TableRow key={label} sx={{backgroundColor: cur ? 'silver' : 'auto'}}>
+            return <TableRow
+                key={label}
+                sx={{backgroundColor: cur ? 'silver' : 'auto', cursor: 'pointer',
+                    '&:hover': {
+                        border: '1px solid red'
+                    }}}
+                onMouseOver={() => onHoverLine(line.source.lineNo, addr)}>
                 <TableCell>{cur ? ">" : ""}</TableCell>
                 <TableCell align={'right'}>
                     {label}
@@ -257,7 +266,9 @@ function MixProgramSection({section, pc}: {section: MIXSection, pc: number}) {
         </TableBody>)
 }
 
-function MixProgramView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXProgram|null}) {
+function MixProgramView({mix, mixProgram, onHoverLine}: {
+    mix: MixEmulator, mixProgram: MIXProgram|null, onHoverLine: (lineNo: number, address: number) => void|undefined
+}) {
     const [pc, setPc] = useState(mix.pc);
     mix.onStateChange((e) => {
         setPc(e.newState.pc);
@@ -274,7 +285,8 @@ function MixProgramView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXPro
                     <TableCell colSpan={3}>Source</TableCell>
                 </TableRow>
             </TableHead>
-            {mixProgram && mixProgram.sections.map(section => <MixProgramSection key={section.offset} section={section} pc={pc}/>)}
+            {mixProgram && mixProgram.sections.map(section =>
+                <MixProgramSection key={section.offset} section={section} pc={pc} onHoverLine={onHoverLine}/>)}
         </Table>
         </TableContainer>
     </BoxViewSection>)
@@ -283,6 +295,8 @@ function MixProgramView({mix, mixProgram}: {mix: MixEmulator, mixProgram: MIXPro
 export function MixEmulatorApp() {
     const [mix] = useState(new MixEmulator());
     const [mixProgram, setMixProgram] = useState<MIXProgram|null>(null);
+    const [hoverLineNo, setHoverLineNo] = useState(-1);
+    const [hoverAddr, setHoverAddr] = useState(-1);
 
     useEffect(() => {
         if (mixProgram !== null) {
@@ -292,11 +306,17 @@ export function MixEmulatorApp() {
 
     return (
         <Container sx={{width: '100%', maxHeight: '800px'}} maxWidth={false}>
-            <Typography variant={'h4'}>The MIX Emulator</Typography>
+            <Typography variant={'h6'}>MIX Playground</Typography>
             <Stack direction={"row"}>
-                <MixAsmEditor onCompile={(p)=> setMixProgram(p)}/>
-                <MixProgramView mix={mix} mixProgram={mixProgram}/>
-                <MixMachineView mix={mix} mixProgram={mixProgram}/>
+                <MixAsmEditor onCompile={(p)=> setMixProgram(p)} lineNo={hoverLineNo}/>
+                <MixProgramView
+                    mix={mix}
+                    mixProgram={mixProgram}
+                    onHoverLine={(lineNo, address) => {
+                        setHoverLineNo(lineNo);
+                        if (address !== -1) setHoverAddr(address);
+                    }}/>
+                <MixMachineView mix={mix} mixProgram={mixProgram} highlightAddress={hoverAddr}/>
             </Stack>
         </Container>
     )

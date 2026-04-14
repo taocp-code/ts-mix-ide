@@ -494,20 +494,17 @@ class MIXAssembler {
                 cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
                 this._counter++;
             } else if (op === 'END') {
-                let lineNo = this._lineNo;
                 for (const lit of this._literals) {
                     cur.data.push(new MixWord(lit.value));
-                    cur.lines.push({lineNo, line: `CON ${lit.value}`, loc: '', op: 'CON', addr: `${lit.value}`});
+                    cur.lines.push({lineNo: this._lineNo, line: `CON ${lit.value}`, loc: '', op: 'CON', addr: `${lit.value}`});
                     lit.op.store(new MixWord(this._counter++), F_OP_ADDR);
-                    lineNo++;
                 }
                 this.defineSymbol(loc, this._counter);
                 for (const {undefinedSymbols} of this._unresolvedReferences) {
                     for (const symbol of undefinedSymbols) {
                         cur.data.push(new MixWord());
-                        cur.lines.push({lineNo, line: `${symbol} CON 0`, loc: symbol, op: 'CON', addr: '0'});
+                        cur.lines.push({lineNo: this._lineNo, line: `${symbol} CON 0`, loc: symbol, op: 'CON', addr: '0'});
                         this.defineSymbol(symbol, this._counter++);
-                        lineNo++;
                     }
                 }
                 this.tryFixUnresolvedReferences()

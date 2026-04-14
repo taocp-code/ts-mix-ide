@@ -74,6 +74,7 @@ export class MixEmulator {
     private _cycles: number = 0;
     private _stateChangeCallback: MixStateChangeCallback[] = [];
     private _halt: boolean = false;
+    private _profile: Record<number, number> = {};
 
     private operations: Record<string, MixOpFunc> = {
         "NOP": (_: MixOperation) => {
@@ -625,6 +626,7 @@ export class MixEmulator {
         const newState = this.copyState();
         const e = {oldState, newState};
         this._stateChangeCallback.forEach(cb => cb(e));
+        this._profile = {};
     }
 
     loadProgram(program: MIXProgram) {
@@ -646,6 +648,23 @@ export class MixEmulator {
         this.emitStateChange(oldState);
     }
 
+    private runAsyncTimer: any = null;
+
+    runAsync(stepDelayMs: number = 1) {
+        if (this._halt) {
+            return;
+        }
+        this.step();
+        this.runAsyncTimer = setTimeout(() => {
+            this.runAsync(stepDelayMs)
+        }, stepDelayMs);
+    }
+
+    stopAsync() {
+        clearTimeout(this.runAsyncTimer);
+        this.runAsyncTimer = null;
+    }
+
     run(limit: number = -1) {
         const st = performance.now();
         let c = 0;
@@ -663,7 +682,8 @@ export class MixEmulator {
 
         const oldState = this.copyState();
 
-        const op = decode(this._memory.load(this._pc++));
+        const opAddr = this._pc++;
+        const op = decode(this._memory.load(opAddr));
         const func = this.operations[op.opcode?.name!];
         if (!func) {
             throw new Error(`Undefined opcode: ${op.opcode?.name}!`);
@@ -674,6 +694,10 @@ export class MixEmulator {
         } else if (op.opcode?.t as number) {
             this._cycles += op.opcode?.t as number;
         }
+
+        if (!this._profile[opAddr]) this._profile[opAddr] = 0;
+        this._profile[opAddr]++;
+
         this.emitStateChange(oldState);
     }
 
@@ -732,6 +756,9 @@ export class MixEmulator {
     }
     get cycles() {
         return this._cycles;
+    }
+    get profile() {
+        return this._profile;
     }
 
     private getI(i: number) {

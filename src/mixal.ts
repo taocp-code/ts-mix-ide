@@ -29,6 +29,7 @@ async function main() {
     const ips = mix.run();
     console.log(`${ips} IPS`);
     console.log(`${mix.cycles} MIX cycles`);
+    console.log(mix.profile);
 }
 
 try {

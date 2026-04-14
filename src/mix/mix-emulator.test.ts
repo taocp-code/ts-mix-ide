@@ -16,10 +16,12 @@ function makeMixProgram(data: MixWord[], text: MixWord[], textOffset: number = 3
             {
                 offset: dataOffset,
                 data,
+                lines: [],
             },
             {
                 offset: textOffset,
                 data: [...text, op('HLT')],
+                lines: [],
             }
         ]
     }
