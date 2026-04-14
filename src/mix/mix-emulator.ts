@@ -46,10 +46,11 @@ export interface MixState {
     overflow: boolean;
     compare: Compare;
     halt: boolean;
+    cycles: number;
+    profile: Record<number, number>;
 }
 
 export interface MixStateChangeEvent {
-    oldState: MixState;
     newState: MixState;
 }
 
@@ -71,9 +72,10 @@ export class MixEmulator {
     private _overflow: boolean = false;
     private _compare: Compare = Compare.EQUAL;
     private _pc: number = 0;
-    private _cycles: number = 0;
     private _stateChangeCallback: MixStateChangeCallback[] = [];
     private _halt: boolean = false;
+    // stats
+    private _cycles: number = 0;
     private _profile: Record<number, number> = {};
 
     private operations: Record<string, MixOpFunc> = {
@@ -617,21 +619,16 @@ export class MixEmulator {
         this._rX.store(MixWord.initValue(random));
         this._rI.forEach(r => r.store(MixWord.initValue(random)));
         this._rJ.store(MixWord.initValue(random));
-
-        const oldState = this.copyState();
         this._overflow = false;
         this._compare = Compare.EQUAL;
         this._pc = 0;
         this._halt = false;
-        const newState = this.copyState();
-        const e = {oldState, newState};
-        this._stateChangeCallback.forEach(cb => cb(e));
+        this._cycles = 0;
         this._profile = {};
+        this.emitStateChange();
     }
 
     loadProgram(program: MIXProgram) {
-        const oldState = this.copyState();
-
         let addr = 0;
         program.sections.sort((a, b) => a.offset - b.offset);
         for (const section of program.sections) {
@@ -645,7 +642,7 @@ export class MixEmulator {
         }
         // point program counter to program start.
         this._pc = program.start;
-        this.emitStateChange(oldState);
+        this.emitStateChange();
     }
 
     private runAsyncTimer: any = null;
@@ -680,8 +677,6 @@ export class MixEmulator {
     step() {
         if (this._halt) throw new Error('MIX Emulator halted, reset first.');
 
-        const oldState = this.copyState();
-
         const opAddr = this._pc++;
         const op = decode(this._memory.load(opAddr));
         const func = this.operations[op.opcode?.name!];
@@ -698,14 +693,13 @@ export class MixEmulator {
         if (!this._profile[opAddr]) this._profile[opAddr] = 0;
         this._profile[opAddr]++;
 
-        this.emitStateChange(oldState);
+        this.emitStateChange();
     }
 
-    private emitStateChange(oldState: MixState) {
+    private emitStateChange() {
         setTimeout(() => {
             const newState = this.copyState();
             const event: MixStateChangeEvent = {
-                oldState: oldState,
                 newState: newState,
             };
             this._stateChangeCallback.forEach(c => c(event));
@@ -779,6 +773,8 @@ export class MixEmulator {
             overflow: this._overflow,
             compare: this._compare,
             halt: this._halt,
+            cycles: this._cycles,
+            profile: this._profile,
         }
     }
 

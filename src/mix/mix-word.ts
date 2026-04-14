@@ -215,11 +215,13 @@ export class MixWord implements Iterable<MixByte> {
     }
 
     private _emitChange(field: MixField) {
-        const event: MixWordChangeEvent = {
-            word: this,
-            field: field,
-        };
-        this._onChange.forEach(c => c(event));
+        setTimeout(() => {
+            const event: MixWordChangeEvent = {
+                word: this,
+                field: field,
+            };
+            this._onChange.forEach(c => c(event));
+        });
     }
 
     private _setAbsValue(v: number) {

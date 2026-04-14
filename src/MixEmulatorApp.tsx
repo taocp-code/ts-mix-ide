@@ -3,7 +3,7 @@ import {MixEmulator} from "./mix/mix-emulator.ts";
 import {
     Box,
     type BoxProps,
-    Button,
+    Button, Chip,
     Container,
     Divider,
     Grid,
@@ -22,11 +22,12 @@ import CodeMirror from '@uiw/react-codemirror';
 import {keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
 import {compile, type MIXProgram, type MIXSection} from "./mix/mix-asm.ts";
-import {MixWord} from "./mix/mix-word.ts";
+import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
 import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
 import {formatBoolean, formatNumber, formatSign} from "./mix/utils.ts";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
+import FastForwardIcon from '@mui/icons-material/FastForward';
+import PauseIcon from '@mui/icons-material/Pause';
 import RedoIcon from '@mui/icons-material/Redo';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import {styled} from "@mui/material/styles";
@@ -58,15 +59,11 @@ function RenderMixWordValue({word}: {word: MixWord}) {
         word.onChange((e) => {
             setW(new MixWord(e.word.value));
         })
-    });
-    return <Box
-        sx={{
+    }, []);
+    return <Box sx={{
             flexDirection: 'row',
             display: 'flex',
-            borderWidth: 1,
-            borderColor: "silver",
-            borderStyle: 'solid',
-            width: '120px'}}>
+            width: `${(2 + MIX_WORD_SIZE - left)*20}px`}}>
         <MonospacedBox>{formatSign(w.sign)}</MonospacedBox>
         {left <= 1 && <MixByte v={w.getByte(1)}/>}
         {left <= 2 && <MixByte v={w.getByte(2)}/>}
@@ -83,7 +80,7 @@ function RenderMixWord({word}: {word: MixWord}) {
     </Box>
 }
 
-function RenderMixState({mix}: {mix: MixEmulator}) {
+function MixStateView({mix}: {mix: MixEmulator}) {
     const [state, setState] = useState({pc: mix.pc, compare: mix.compare, overflow: mix.overflow, halt: mix.halt});
     useEffect(() => {
         mix.onStateChange((e) => {
@@ -112,7 +109,7 @@ function RenderMixState({mix}: {mix: MixEmulator}) {
             </MonospacedBox>
         </Box>
         <Box sx={{p: 1}}>
-            <Box>Halted?</Box>
+            <Box>Status</Box>
             <MonospacedBox>
                 {formatBoolean(state.halt, 'Halted', 'Running')}
             </MonospacedBox>
@@ -137,10 +134,10 @@ function RenderMixMemory({mix, highlightAddress}: {mix: MixEmulator, highlightAd
     }, [mix]);
     console.log('Highlight address', highlightAddress);
 
-    return <Grid sx={{p: 1}} container={true} spacing={1}>
+    return <Grid sx={{p: 1}} container={true} spacing={0} columns={1}>
         {words.map((w) => {
-            return (<Box key={w.label} sx={{p: 0.5}}>
-                <Typography>{w.label}</Typography>
+            return (<Box key={w.label} sx={{p: '1px'}}>
+                <Typography variant={"caption"}>{w.label}</Typography>
                 <RenderMixWordValue word={w}/>
             </Box>)
         })}
@@ -149,16 +146,22 @@ function RenderMixMemory({mix, highlightAddress}: {mix: MixEmulator, highlightAd
 
 function MixMachineView({mix, mixProgram, highlightAddress}: {mix: MixEmulator, mixProgram: MIXProgram|null, highlightAddress: number}) {
     const [running, setRunning] = useState(false);
+    const [halted, setHalted] = useState(false);
+    useEffect(() => {
+        mix.onStateChange((e) => {
+            setHalted(e.newState.halt);
+        })
+    }, [mix]);
 
     return (<BoxViewSection>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
             <Tooltip title={'Step'}>
                 <IconButton sx={{color: 'blue'}} onClick={() => {
                     mix.step();
-                }} disabled={running}><RedoIcon/></IconButton>
+                }} disabled={running || halted}><RedoIcon/></IconButton>
             </Tooltip>
             <Tooltip title={running ? 'Stop' : 'Run'}>
-                <IconButton sx={{color: running ? 'red' : 'green'}} onClick={() => {
+                <IconButton disabled={halted} sx={{color: running ? 'red' : 'green'}} onClick={() => {
                     if (!running) {
                         setRunning(true);
                         mix.runAsync(50);
@@ -166,7 +169,12 @@ function MixMachineView({mix, mixProgram, highlightAddress}: {mix: MixEmulator, 
                         setRunning(false);
                         mix.stopAsync();
                     }
-                }}>{running ? <StopIcon/> : <PlayArrowIcon/>}</IconButton>
+                }}>{running ? <PauseIcon/> : <PlayArrowIcon/>}</IconButton>
+            </Tooltip>
+            <Tooltip title={"Fast Run"}>
+                <IconButton disabled={running || halted} onClick={() => {
+                    mix.run();
+                }}><FastForwardIcon/></IconButton>
             </Tooltip>
             <Tooltip title={"Reset"}>
                 <IconButton sx={{color: 'maroon'}} onClick={() => {
@@ -176,6 +184,10 @@ function MixMachineView({mix, mixProgram, highlightAddress}: {mix: MixEmulator, 
                     }
                 }} disabled={running}><RestartAltIcon/></IconButton>
             </Tooltip>
+            {halted && <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>}
+        </Box>
+        <Box>
+            <MixStateView mix={mix}/>
         </Box>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
             <RenderMixWord word={mix.rA}/>
@@ -189,9 +201,6 @@ function MixMachineView({mix, mixProgram, highlightAddress}: {mix: MixEmulator, 
             <RenderMixWord word={mix.rI5}/>
             <RenderMixWord word={mix.rI6}/>
             <RenderMixWord word={mix.rJ}/>
-        </Box>
-        <Box>
-            <RenderMixState mix={mix}/>
         </Box>
         <Divider></Divider>
         <Box sx={{maxHeight: '800px', overflowY: 'auto'}}>
@@ -228,37 +237,41 @@ function MixAsmEditor(props: {onCompile: (_: MIXProgram)=>void, lineNo: number})
     </BoxViewSection>)
 }
 
-function MixProgramSection({section, pc, onHoverLine}: {section: MIXSection, pc: number, onHoverLine: (lineNo: number, addres: number) => void|undefined}) {
-    const dataAndSource = section.data.map((w, i) => {
-        return {label: formatNumber(section.offset + i, 4), addr: section.offset + i, word: w, source: section.lines[i]};
-    });
+function MixProgramSection({section, pc, mix}: {section: MIXSection, pc: number, onHoverLine: (lineNo: number, address: number) => void|undefined, mix: MixEmulator}) {
+    const [profile, setProfile] = useState<Record<number, number>>({});
+    const dataAndSource = useMemo(() =>
+        section.data.map((w, i) => {
+            return {
+                label: formatNumber(section.offset + i, 4), addr: section.offset + i, word: w, source: section.lines[i]};
+        }), [section]);
+    useEffect(() => {
+        mix.onStateChange((e) => setProfile(e.newState.profile));
+    }, []);
     return (
         <TableBody>
         {dataAndSource.map((line) => {
             const {label, addr, word, source} = line;
+            const execCount = profile[addr];
             const cur = pc === addr;
-            return <TableRow
-                key={label}
-                sx={{backgroundColor: cur ? 'silver' : 'auto', cursor: 'pointer',
-                    '&:hover': {
-                        border: '1px solid red'
-                    }}}
-                onMouseOver={() => onHoverLine(line.source.lineNo, addr)}>
-                <TableCell>{cur ? ">" : ""}</TableCell>
-                <TableCell align={'right'}>
+            return <TableRow key={label}
+                             sx={{backgroundColor: cur ? 'silver' : 'auto', cursor: 'pointer'}}>
+                <TableCell>{execCount} {cur ? ">" : ""}</TableCell>
+                <TableCell align={'right'} sx={{paddingRight: '4px'}}>
                     {label}
                 </TableCell>
-                <TableCell align={'left'}>
+                <TableCell sx={{paddingLeft: '4px'}}>
                     <RenderMixWordValue word={word}/>
                 </TableCell>
-                <TableCell align={'right'}>{formatNumber(source.lineNo, 4)}</TableCell>
-                <TableCell sx={{whiteSpace: 'pre'}}>
+                <TableCell align={'right'} sx={{paddingRight: '4px'}}>
+                    {formatNumber(source.lineNo, 4)}
+                </TableCell>
+                <TableCell sx={{paddingRight: '4px', fontFamily: "monospace"}} align={"right"}>
                     {source.loc}
                 </TableCell>
-                <TableCell sx={{whiteSpace: 'pre'}}>
+                <TableCell sx={{paddingLeft: '4px', fontFamily: "monospace"}}>
                     {source.op}
                 </TableCell>
-                <TableCell sx={{whiteSpace: 'pre'}}>
+                <TableCell sx={{paddingLeft: '4px', fontFamily: "monospace", whiteSpace: "pre"}}>
                     {source.addr}
                 </TableCell>
             </TableRow>
@@ -275,25 +288,27 @@ function MixProgramView({mix, mixProgram, onHoverLine}: {
     })
     return (<BoxViewSection>
         <TableContainer sx={{overflowY: 'auto', maxHeight: '80vh'}}>
-            <Table size={"small"} stickyHeader={true}>
+            <Table size={"small"} stickyHeader={true} padding={"none"}>
             <TableHead>
-                <TableRow>
-                    <TableCell></TableCell>
-                    <TableCell>Address</TableCell>
-                    <TableCell>Value</TableCell>
-                    <TableCell>Line No</TableCell>
-                    <TableCell colSpan={3}>Source</TableCell>
+                <TableRow sx={{fontWeight: "bold"}}>
+                    <TableCell align={"right"}></TableCell>
+                    <TableCell align={"right"} sx={{paddingRight: '4px'}}>Address</TableCell>
+                    <TableCell align={"left"} sx={{paddingLeft: '4px'}}>Value</TableCell>
+                    <TableCell align={"right"} sx={{paddingRight: '4px'}}>Line No</TableCell>
+                    <TableCell align={"right"} sx={{paddingRight: '4px'}}>LOC</TableCell>
+                    <TableCell align={"left"} sx={{paddingLeft: '4px'}}>OP</TableCell>
+                    <TableCell align={"left"} sx={{paddingLeft: '4px'}}>ADDR</TableCell>
                 </TableRow>
             </TableHead>
             {mixProgram && mixProgram.sections.map(section =>
-                <MixProgramSection key={section.offset} section={section} pc={pc} onHoverLine={onHoverLine}/>)}
+                <MixProgramSection mix={mix} key={section.offset} section={section} pc={pc} onHoverLine={onHoverLine}/>)}
         </Table>
         </TableContainer>
     </BoxViewSection>)
 }
 
 export function MixEmulatorApp() {
-    const [mix] = useState(new MixEmulator());
+    const mix = useMemo(() => new MixEmulator(), []);
     const [mixProgram, setMixProgram] = useState<MIXProgram|null>(null);
     const [hoverLineNo, setHoverLineNo] = useState(-1);
     const [hoverAddr, setHoverAddr] = useState(-1);
