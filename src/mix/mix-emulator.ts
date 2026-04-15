@@ -48,6 +48,7 @@ export interface MixState {
     halt: boolean;
     cycles: number;
     profile: Record<number, number>;
+    instructions: number;
 }
 
 export interface MixStateChangeEvent {
@@ -76,6 +77,7 @@ export class MixEmulator {
     private _halt: boolean = false;
     // stats
     private _cycles: number = 0;
+    private _instructions: number = 0;
     private _profile: Record<number, number> = {};
 
     private operations: Record<string, MixOpFunc> = {
@@ -624,6 +626,7 @@ export class MixEmulator {
         this._pc = 0;
         this._halt = false;
         this._cycles = 0;
+        this._instructions = 0;
         this._profile = {};
         this.emitStateChange();
     }
@@ -662,19 +665,17 @@ export class MixEmulator {
         this.runAsyncTimer = null;
     }
 
-    run(limit: number = -1) {
+    run(emitStateChange: boolean = true, limit: number = -1) {
         const st = performance.now();
-        let c = 0;
         while (!this._halt) {
-            this.step();
-            c++;
-            if (limit !== -1 && c > limit) break;
+            this.step(emitStateChange);
+            if (limit !== -1 && this._instructions > limit) break;
         }
         const et = performance.now();
-        return c * 1000/(et-st);
+        return this._instructions * 1000/(et-st);
     }
 
-    step() {
+    step(emitStateChange: boolean = true) {
         if (this._halt) throw new Error('MIX Emulator halted, reset first.');
 
         const opAddr = this._pc++;
@@ -692,18 +693,25 @@ export class MixEmulator {
 
         if (!this._profile[opAddr]) this._profile[opAddr] = 0;
         this._profile[opAddr]++;
+        this._instructions++;
 
-        this.emitStateChange();
+        if (emitStateChange) this.emitStateChange();
     }
 
-    private emitStateChange() {
-        setTimeout(() => {
-            const newState = this.copyState();
-            const event: MixStateChangeEvent = {
-                newState: newState,
-            };
-            this._stateChangeCallback.forEach(c => c(event));
-        });
+    emitStateChange() {
+        const newState = this.copyState();
+        const event: MixStateChangeEvent = {
+            newState: newState,
+        };
+        this._stateChangeCallback.forEach(c => c(event));
+    }
+
+    emitRegisterAndMemoryChange() {
+        this._rA.emitChange();
+        this._rX.emitChange();
+        this._rJ.emitChange();
+        for (const rI of this._rI) rI.emitChange();
+        for (const w of this._memory) w.emitChange();
     }
 
     get overflow() {
@@ -775,6 +783,7 @@ export class MixEmulator {
             halt: this._halt,
             cycles: this._cycles,
             profile: this._profile,
+            instructions: this._instructions,
         }
     }
 

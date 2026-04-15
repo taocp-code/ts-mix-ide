@@ -69,6 +69,7 @@ export class MixWordOverflowError extends Error {}
 export class MixWord implements Iterable<MixByte> {
     public static readonly ZERO = new MixWord(0);
     public static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
+    private static emitChange: boolean = true;
     private readonly _label: string;
     // leftmost byte of the word, 1-based, could be 1 for normal words or 4 for rI* and rJ.
     private readonly _left: number;
@@ -124,6 +125,10 @@ export class MixWord implements Iterable<MixByte> {
         return new MixWord(0, label, 4); // only bytes 4-5 are used.
     }
 
+    static setEmitChange(v: boolean) {
+        this.emitChange = v;
+    }
+
     get label() {
         return this._label;
     }
@@ -135,7 +140,7 @@ export class MixWord implements Iterable<MixByte> {
     }
     set sign(s: number) {
         this._bytes[0] = _sign_of(s);
-        this._emitChange({l: 0, r: 0});
+        this.emitChange({l: 0, r: 0});
     }
     get abs() {
         let x = 0;
@@ -146,7 +151,7 @@ export class MixWord implements Iterable<MixByte> {
     }
     set abs(v: number) {
         this._setAbsValue(v);
-        this._emitChange({l: 1, r: MIX_WORD_SIZE});
+        this.emitChange({l: 1, r: MIX_WORD_SIZE});
     }
     get value() {
         return this.sign * this.abs;
@@ -154,7 +159,7 @@ export class MixWord implements Iterable<MixByte> {
     set value(v: number) {
         this.sign = _sign_of(v);
         this._setAbsValue(v);
-        this._emitChange({l: 0, r: MIX_WORD_SIZE});
+        this.emitChange({l: 0, r: MIX_WORD_SIZE});
     }
     get left() {
         return this._left;
@@ -210,18 +215,17 @@ export class MixWord implements Iterable<MixByte> {
                 this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
             }
         }
-        this._emitChange({l, r});
+        this.emitChange({l, r});
         return this;
     }
 
-    private _emitChange(field: MixField) {
-        setTimeout(() => {
-            const event: MixWordChangeEvent = {
-                word: this,
-                field: field,
-            };
-            this._onChange.forEach(c => c(event));
-        });
+    emitChange(field: MixField = {l: 0, r: 5}) {
+        if (!MixWord.emitChange) return;
+        const event: MixWordChangeEvent = {
+            word: this,
+            field: field,
+        };
+        this._onChange.forEach(c => c(event));
     }
 
     private _setAbsValue(v: number) {
