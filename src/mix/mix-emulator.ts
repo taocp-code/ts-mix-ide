@@ -23,19 +23,26 @@ class MixMemory implements Iterable<MixWord> {
             }
         }
     }
+
     public static readonly SIZE = 4000;
     private words: MixWord[] = [...new Array(MixMemory.SIZE).keys()]
         .map((addr) => new MixWord(0, `${formatNumber(addr, 4)}`));
-    load(addr: number, f: number=F_ALL): MixWord {
-        if (addr < 0 || addr >= MixMemory.SIZE) throw new Error(`Invalid address: ${addr}.`);
-        return this.words[addr].load(f);
+
+    load(addr: number, f: number = F_ALL): MixWord {
+        return this.at(addr).load(f);
     }
-    store(addr: number, value: MixWord, f: number=F_ALL) {
-        if (addr < 0 || addr >= MixMemory.SIZE) throw new Error(`Invalid address: ${addr}.`);
-        this.words[addr].store(value, f);
+
+    store(addr: number, value: MixWord, f: number = F_ALL) {
+        this.at(addr).store(value, f);
     }
+
     reset(random: boolean = false) {
         this.words.forEach(w => w.store(MixWord.initValue(random)));
+    }
+
+    at(addr: number): MixWord {
+        if (addr < 0 || addr >= MixMemory.SIZE) throw new Error(`Invalid address: ${addr}.`);
+        return this.words[addr];
     }
 }
 
@@ -126,25 +133,38 @@ export class MixEmulator {
         console.log(`MIX Emulator onStateChange size: ${this._stateChangeCallback.length};`)
     }
 
+    /**
+     * Load a MIX Program, which is a list of continuous memory sections with offset, plus a start address.
+     * @param program - program to load
+     */
     loadProgram(program: MIXProgram) {
+        MixWord.setEmitChange(false);
         try {
             let addr = 0;
             program.sections.sort((a, b) => a.offset - b.offset);
             for (const section of program.sections) {
                 if (section.offset < addr) {
-                    throw new Error(`Invalid program section offset: ${section.offset} cannot be less than cur address: ${addr}.`);
+                    this._error = `Possible overlapping sections. Invalid program section offset: 
+                    ${section.offset} cannot be less than cur address: ${addr}.`;
+                    return;
                 }
-                addr = section.offset;
-                for (const word of section.data) {
-                    this._memory.store(addr++, word);
+                section.memory = [];
+                for (let i = 0; i < section.data.length; i++) {
+                    const word = section.data[i];
+                    const addr = section.offset + i;
+                    this._memory.store(addr, word);
+                    section.memory.push(this._memory.at(addr));
                 }
+                addr = section.offset + section.data.length;
             }
             // point program counter to program start.
             this._pc = program.start;
         } catch (e) {
             this._error = (e as Error).message;
         }
+        MixWord.setEmitChange(true);
         this.emitStateChange();
+        this.emitRegisterAndMemoryChange();
     }
 
 
@@ -237,63 +257,80 @@ export class MixEmulator {
     get overflow() {
         return this._overflow;
     }
+
     get compare() {
         return this._compare;
     }
+
     get pc() {
         return this._pc;
     }
+
     get rA() {
         return this._rA;
     }
+
     get rX() {
         return this._rX;
     }
+
     get rI1() {
         return this._rI[0];
     }
+
     get rI2() {
         return this._rI[1];
     }
+
     get rI3() {
         return this._rI[2];
     }
+
     get rI4() {
         return this._rI[3];
     }
+
     get rI5() {
         return this._rI[4];
     }
+
     get rI6() {
         return this._rI[5];
     }
+
     get rJ() {
         return this._rJ;
     }
+
     get memory() {
         return this._memory;
     }
+
     get running() {
         return this._runAsyncTimer !== null;
     }
+
     get ips() {
         if (this._startTime === -1) return 0;
         const now = performance.now();
         return 1000 * this._instructions / (now - this._startTime);
     }
+
     get totalTime() {
         return this._totalTime;
     }
+
     get profile() {
         return this._profile;
     }
+
     get state() {
         return this.getCurrentState();
     }
 
     private getI(i: number) {
         if (i <= 0) return MixWord.ZERO;
-        if (i <= 6) return this._rI[i-1];
+        if (i <= 6) return this._rI[i - 1];
         return undefined;
     }
 
@@ -522,100 +559,100 @@ export class MixEmulator {
         "ST6": (op: MixOperation) => {
             this.store(op, this.rI6);
         },
-        "ENTA": (op: MixOperation)=> {
+        "ENTA": (op: MixOperation) => {
             this.ent(op, this.rA);
         },
-        "ENNA": (op: MixOperation)=> {
+        "ENNA": (op: MixOperation) => {
             this.ent(op, this.rA, true);
         },
-        "ENTX": (op: MixOperation)=> {
+        "ENTX": (op: MixOperation) => {
             this.ent(op, this.rX);
         },
-        "ENNX": (op: MixOperation)=> {
+        "ENNX": (op: MixOperation) => {
             this.ent(op, this.rX, true);
         },
-        "ENT1": (op: MixOperation)=> {
+        "ENT1": (op: MixOperation) => {
             this.ent(op, this.rI1);
         },
-        "ENT2": (op: MixOperation)=> {
+        "ENT2": (op: MixOperation) => {
             this.ent(op, this.rI2);
         },
-        "ENT3": (op: MixOperation)=> {
+        "ENT3": (op: MixOperation) => {
             this.ent(op, this.rI3);
         },
-        "ENT4": (op: MixOperation)=> {
+        "ENT4": (op: MixOperation) => {
             this.ent(op, this.rI4);
         },
-        "ENT5": (op: MixOperation)=> {
+        "ENT5": (op: MixOperation) => {
             this.ent(op, this.rI5);
         },
-        "ENT6": (op: MixOperation)=> {
+        "ENT6": (op: MixOperation) => {
             this.ent(op, this.rI6);
         },
-        "ENN1": (op: MixOperation)=> {
+        "ENN1": (op: MixOperation) => {
             this.ent(op, this.rI1, true);
         },
-        "ENN2": (op: MixOperation)=> {
+        "ENN2": (op: MixOperation) => {
             this.ent(op, this.rI2, true);
         },
-        "ENN3": (op: MixOperation)=> {
+        "ENN3": (op: MixOperation) => {
             this.ent(op, this.rI3, true);
         },
-        "ENN4": (op: MixOperation)=> {
+        "ENN4": (op: MixOperation) => {
             this.ent(op, this.rI4, true);
         },
-        "ENN5": (op: MixOperation)=> {
+        "ENN5": (op: MixOperation) => {
             this.ent(op, this.rI5, true);
         },
-        "ENN6": (op: MixOperation)=> {
+        "ENN6": (op: MixOperation) => {
             this.ent(op, this.rI6, true);
         },
-        "INCA": (op: MixOperation)=> {
+        "INCA": (op: MixOperation) => {
             this.inc(op, this.rA);
         },
-        "DECA": (op: MixOperation)=> {
+        "DECA": (op: MixOperation) => {
             this.inc(op, this.rA, true);
         },
-        "INCX": (op: MixOperation)=> {
+        "INCX": (op: MixOperation) => {
             this.inc(op, this.rX);
         },
-        "DECX": (op: MixOperation)=> {
+        "DECX": (op: MixOperation) => {
             this.inc(op, this.rX, true);
         },
-        "INC1": (op: MixOperation)=> {
+        "INC1": (op: MixOperation) => {
             this.inc(op, this.rI1);
         },
-        "DEC1": (op: MixOperation)=> {
+        "DEC1": (op: MixOperation) => {
             this.inc(op, this.rI1, true);
         },
-        "INC2": (op: MixOperation)=> {
+        "INC2": (op: MixOperation) => {
             this.inc(op, this.rI2);
         },
-        "DEC2": (op: MixOperation)=> {
+        "DEC2": (op: MixOperation) => {
             this.inc(op, this.rI2, true);
         },
-        "INC3": (op: MixOperation)=> {
+        "INC3": (op: MixOperation) => {
             this.inc(op, this.rI3);
         },
-        "DEC3": (op: MixOperation)=> {
+        "DEC3": (op: MixOperation) => {
             this.inc(op, this.rI3, true);
         },
-        "INC4": (op: MixOperation)=> {
+        "INC4": (op: MixOperation) => {
             this.inc(op, this.rI4);
         },
-        "DEC4": (op: MixOperation)=> {
+        "DEC4": (op: MixOperation) => {
             this.inc(op, this.rI4, true);
         },
-        "INC5": (op: MixOperation)=> {
+        "INC5": (op: MixOperation) => {
             this.inc(op, this.rI5);
         },
-        "DEC5": (op: MixOperation)=> {
+        "DEC5": (op: MixOperation) => {
             this.inc(op, this.rI5, true);
         },
-        "INC6": (op: MixOperation)=> {
+        "INC6": (op: MixOperation) => {
             this.inc(op, this.rI6);
         },
-        "DEC6": (op: MixOperation)=> {
+        "DEC6": (op: MixOperation) => {
             this.inc(op, this.rI6, true);
         },
         "CMPA": (op: MixOperation) => {
@@ -653,7 +690,7 @@ export class MixEmulator {
                 this.jmp(op);
             }
         },
-        "JNOV": (op: MixOperation)=> {
+        "JNOV": (op: MixOperation) => {
             if (!this._overflow) {
                 this.jmp(op);
             }
@@ -805,7 +842,7 @@ export class MixEmulator {
             const bytesA = this._rA.bytes.slice(this._rA.left);
             const bytesX = this._rX.bytes.slice(this._rX.left);
             const bytes = [1, ...bytesA, ...bytesX];
-            if (M >= MIX_WORD_SIZE*2) {
+            if (M >= MIX_WORD_SIZE * 2) {
                 this._rA.abs = 0;
                 this._rX.abs = 0;
             } else {
@@ -815,8 +852,8 @@ export class MixEmulator {
                 for (let i = 1; i <= M; i++) {
                     bytes[i] = 0;
                 }
-                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
-                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE + 1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
         "SLAX": (op) => {
@@ -828,18 +865,18 @@ export class MixEmulator {
             const bytesA = this._rA.bytes.slice(this._rA.left);
             const bytesX = this._rX.bytes.slice(this._rX.left);
             const bytes = [1, ...bytesA, ...bytesX];
-            if (M >= MIX_WORD_SIZE*2) {
+            if (M >= MIX_WORD_SIZE * 2) {
                 this._rA.abs = 0;
                 this._rX.abs = 0;
             } else {
-                for (let i = 1; i <= MIX_WORD_SIZE*2 - M; i++) {
-                    bytes[i] = bytes[i+M];
+                for (let i = 1; i <= MIX_WORD_SIZE * 2 - M; i++) {
+                    bytes[i] = bytes[i + M];
                 }
-                for (let i = MIX_WORD_SIZE*2 - M + 1; i <= MIX_WORD_SIZE * 2; i++) {
+                for (let i = MIX_WORD_SIZE * 2 - M + 1; i <= MIX_WORD_SIZE * 2; i++) {
                     bytes[i] = 0;
                 }
-                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
-                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE + 1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
         "SLC": (op) => {
@@ -856,8 +893,8 @@ export class MixEmulator {
                 const b1 = bytes.slice(0, k);
                 const b2 = bytes.slice(k);
                 bytes = [1, ...b2, ...b1];
-                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
-                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE + 1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
         "SRC": (op) => {
@@ -874,8 +911,8 @@ export class MixEmulator {
                 const b1 = bytes.slice(0, k);
                 const b2 = bytes.slice(k);
                 bytes = [1, ...b2, ...b1];
-                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE+1)]));
-                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE+1)]));
+                this._rA.store(MixWord.fromBytes([this._rA.sign, ...bytes.slice(1, MIX_WORD_SIZE + 1)]));
+                this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         }
     };
@@ -883,12 +920,24 @@ export class MixEmulator {
     private makeJmpRegisterFunc(cond: string, register: MixWord): MixOpFunc {
         let predicate: () => boolean = () => false;
         switch (cond) {
-            case 'N': predicate = () => register.value < 0; break;
-            case 'Z': predicate = () => register.value === 0; break;
-            case 'P': predicate = () => register.value > 0; break;
-            case 'NP': predicate = () => register.value <= 0; break;
-            case 'NN': predicate = () => register.value >= 0; break;
-            case 'NZ': predicate = () => register.value !== 0; break;
+            case 'N':
+                predicate = () => register.value < 0;
+                break;
+            case 'Z':
+                predicate = () => register.value === 0;
+                break;
+            case 'P':
+                predicate = () => register.value > 0;
+                break;
+            case 'NP':
+                predicate = () => register.value <= 0;
+                break;
+            case 'NN':
+                predicate = () => register.value >= 0;
+                break;
+            case 'NZ':
+                predicate = () => register.value !== 0;
+                break;
         }
         return (op: MixOperation) => {
             if (predicate()) {

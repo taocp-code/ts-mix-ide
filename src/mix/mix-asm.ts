@@ -16,6 +16,7 @@ export interface MixSourceLine {
 export interface MIXSection {
     offset: number;
     data: MixWord[];
+    memory: MixWord[];
     lines: MixSourceLine[];
 }
 
@@ -453,6 +454,7 @@ class MIXAssembler {
         let cur: MIXSection = {
             offset: 0,
             data: [],
+            memory: [],
             lines: [],
         };
         let start: number = 0;
@@ -479,6 +481,7 @@ class MIXAssembler {
                     cur = {
                         offset: this._counter,
                         data: [],
+                        memory: [],
                         lines: []
                     }
                 }

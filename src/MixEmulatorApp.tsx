@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {MixEmulator, type MixState} from "./mix/mix-emulator.ts";
 import {
+    Alert,
     Box,
     type BoxProps,
     Button,
@@ -191,6 +192,7 @@ function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MIXPr
     const halted = state.halt;
 
     return (<BoxViewSection>
+        {state.error && <Alert variant={"filled"} color={"error"} title={state.error}/>}
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
             {MixMachineController(halted, mix, running, asyncStepDelayMs, mixProgram, state)}
         </Box>
@@ -252,12 +254,15 @@ function MixProgramSection({section, pc, mix}: { section: MIXSection, pc: number
     const dataAndSource = useMemo(() =>
         section.data.map((w, i) => {
             return {
-                label: formatNumber(section.offset + i, 4), addr: section.offset + i, word: w, source: section.lines[i]
+                label: formatNumber(section.offset + i, 4),
+                addr: section.offset + i,
+                source: section.lines[i],
+                mixMemoryWord: section.memory[i] || w,
             };
         }), [section]);
     const lines = useMemo(() => {
         return dataAndSource.map(line => {
-            const {label, addr, word, source} = line;
+            const {label, addr, source, mixMemoryWord} = line;
             const execCount = profile[addr] || 0;
             const cur = pc === addr;
             return <TableRow key={label}
@@ -268,7 +273,7 @@ function MixProgramSection({section, pc, mix}: { section: MIXSection, pc: number
                     {label}
                 </TableCell>
                 <TableCell sx={{paddingLeft: '4px'}}>
-                    <MixWordValue word={word}/>
+                    <MixWordValue word={mixMemoryWord}/>
                 </TableCell>
                 <TableCell align={'right'} sx={{paddingRight: '4px'}}>
                     {formatNumber(source.lineNo, 0)}
