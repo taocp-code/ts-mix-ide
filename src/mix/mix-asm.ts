@@ -551,6 +551,7 @@ class MIXAssembler {
         if (this._unresolvedReferences.length > 0) {
             throw new Error('Unresolved references: ' + this._unresolvedReferences);
         }
+        sections.sort((a, b) => a.offset - b.offset);
         this._mixProgram = {start, sections};
         return this._mixProgram;
     }

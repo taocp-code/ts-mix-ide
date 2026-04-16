@@ -52,7 +52,6 @@ function _sign_of(v: number) {
 
 export interface MixWordChangeEvent {
     word: MixWord;
-    field: MixField;
 }
 
 export type MixWordChangeCallback = (e: MixWordChangeEvent) => void;
@@ -76,6 +75,7 @@ export class MixWord implements Iterable<MixByte> {
     // array of bytes, including the sign byte.
     private _bytes: MixByte[];
     private _onChange: MixWordChangeCallback[] = [];
+    private _attrs: Record<string, any>;
 
     constructor(value: number = 0, label: string = '', left: number = 1) {
         // bytes[0] is sign, bytes[1] is the most significant byte, bytes[size] is the least significant byte.
@@ -83,6 +83,7 @@ export class MixWord implements Iterable<MixByte> {
         this._left = left;
         this._bytes = new Array(MIX_WORD_SIZE + 1).fill(0);
         this._bytes[0] = _sign_of(value);
+        this._attrs = {};
         this._setAbsValue(value);
     }
 
@@ -140,7 +141,7 @@ export class MixWord implements Iterable<MixByte> {
     }
     set sign(s: number) {
         this._bytes[0] = _sign_of(s);
-        this.emitChange({l: 0, r: 0});
+        this.emitChange();
     }
     get abs() {
         let x = 0;
@@ -151,7 +152,7 @@ export class MixWord implements Iterable<MixByte> {
     }
     set abs(v: number) {
         this._setAbsValue(v);
-        this.emitChange({l: 1, r: MIX_WORD_SIZE});
+        this.emitChange();
     }
     get value() {
         return this.sign * this.abs;
@@ -159,7 +160,7 @@ export class MixWord implements Iterable<MixByte> {
     set value(v: number) {
         this.sign = _sign_of(v);
         this._setAbsValue(v);
-        this.emitChange({l: 0, r: MIX_WORD_SIZE});
+        this.emitChange();
     }
     get left() {
         return this._left;
@@ -167,6 +168,15 @@ export class MixWord implements Iterable<MixByte> {
     get bytes(): number[]{
         return this._bytes;
     }
+    get attrs(): Record<string, any> {
+        return this._attrs;
+    }
+
+    setAttr(k: string, v: any) {
+        this._attrs[k] = v;
+        this.emitChange();
+    }
+
     /**
      * Get value at byte index (1-5)
      * @param i 1-based index of the byte.
@@ -216,15 +226,14 @@ export class MixWord implements Iterable<MixByte> {
                 this._bytes[i] = val._bytes[MIX_WORD_SIZE - r + i];
             }
         }
-        this.emitChange({l, r});
+        this.emitChange();
         return this;
     }
 
-    emitChange(field: MixField = {l: 0, r: 5}) {
+    emitChange() {
         if (!MixWord.emitChange) return;
         const event: MixWordChangeEvent = {
             word: this,
-            field: field,
         };
         this._onChange.forEach(c => c(event));
     }
