@@ -1,6 +1,6 @@
 import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
-import type {MIXProgram} from "./mix-asm.ts";
+import type {MixProgram} from "./mix-asm.ts";
 import {MixDevice} from "./mix-io.ts";
 import {NUMS} from "./mix-chars.ts";
 import {formatNumber} from "./utils.ts";
@@ -54,10 +54,10 @@ export interface MixState {
     compare: Compare;
     halt: boolean;
     totalTime: number;
+    totalRealTime: number;
     profile: Record<number, number>;
     instructions: number;
     running: boolean;
-    startTime: number;
     ips: number;
     error?: string;
 }
@@ -93,10 +93,10 @@ export class MixEmulator {
     // Timeout id for async run.
     private _runAsyncTimer: any = null;
 
-    // Run start time, not affected by step function.
-    private _startTime: number = -1;
     // MIX machine total run time - accumulated virtual time per instruction
     private _totalTime: number = 0;
+    // Total real world run time in seconds.
+    private _totalRealTime: number = 0;
     // Number of instructions executed since last reset.
     private _instructions: number = 0;
     // execution count per address
@@ -120,8 +120,8 @@ export class MixEmulator {
         this._pc = 0;
         this._halt = false;
 
-        this._startTime = -1;
         this._totalTime = 0;
+        this._totalRealTime = 0;
         this._instructions = 0;
         this._profile = {};
         this._error = undefined;
@@ -137,7 +137,7 @@ export class MixEmulator {
      * Load a MIX Program, which is a list of continuous memory sections with offset, plus a start address.
      * @param program - program to load
      */
-    loadProgram(program: MIXProgram) {
+    loadProgram(program: MixProgram) {
         MixWord.setEmitChange(false);
         try {
             let addr = 0;
@@ -176,16 +176,39 @@ export class MixEmulator {
             // already running.
             return;
         }
-        const next = () => {
-            this._runAsyncTimer = setTimeout(execAsync, stepDelayMs);
+        const next = (fn: Function) => {
+            if (!this._halt) {
+                this._runAsyncTimer = setTimeout(fn, stepDelayMs);
+            } else {
+                this._runAsyncTimer = null;
+            }
+
         }
-        const execAsync = () => {
-            this.step();
-            if (!this._halt) next();
+
+        let execAsync: Function = () => {};
+        if (stepDelayMs > 0) {
+            let prevTime = performance.now();
+            execAsync = () => {
+                const t = performance.now();
+                this.step(true, (t - prevTime)/1000);
+                prevTime = t;
+                next(execAsync);
+            }
+        } else {
+            execAsync = () => {
+                MixWord.setEmitChange(false); // turn off word update events
+                while (!this._halt) {
+                    this.step(false);
+                }
+                next(execAsync);
+                MixWord.setEmitChange(true);
+                this.emitStateChange();  // manually trigger state change after run terminates.
+                this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+            }
         }
-        this._startTime = performance.now();
         this._instructions = 0;
-        next();
+        next(execAsync);
+        this.emitStateChange();
     }
 
     stopAsync() {
@@ -197,7 +220,6 @@ export class MixEmulator {
     }
 
     run(emitStateChange: boolean = true, limit: number = -1) {
-        this._startTime = performance.now();
         while (!this._halt) {
             this.step(emitStateChange);
             if (limit !== -1 && this._instructions > limit) break;
@@ -205,12 +227,13 @@ export class MixEmulator {
         return this.ips;
     }
 
-    step(emitStateChange: boolean = true) {
+    step(emitStateChange: boolean = true, dt: number = 0) {
         if (this._halt) {
             this._error = 'MIX Emulator halted, reset it.';
             return;
         }
 
+        const st = performance.now();
         const opAddr = this._pc++;
         const op = decode(this._memory.load(opAddr));
         const func = this.operations[op.opcode?.name!];
@@ -235,6 +258,7 @@ export class MixEmulator {
         if (!this._profile[opAddr]) this._profile[opAddr] = 0;
         this._profile[opAddr]++;
         this._instructions++;
+        this._totalRealTime += dt + (performance.now() - st)/1000;
 
         if (emitStateChange) this.emitStateChange();
     }
@@ -311,9 +335,7 @@ export class MixEmulator {
     }
 
     get ips() {
-        if (this._startTime === -1) return 0;
-        const now = performance.now();
-        return 1000 * this._instructions / (now - this._startTime);
+        return this._instructions / this._totalRealTime;
     }
 
     get totalTime() {
@@ -353,10 +375,10 @@ export class MixEmulator {
             compare: this._compare,
             halt: this._halt,
             totalTime: this._totalTime,
+            totalRealTime: this._totalRealTime,
             profile: this._profile,
             instructions: this._instructions,
             running: this.running,
-            startTime: this._startTime,
             ips: this.ips,
             error: this._error,
         }

@@ -13,16 +13,16 @@ export interface MixSourceLine {
     addr: string;
 }
 
-export interface MIXSection {
+export interface MixSection {
     offset: number;
     data: MixWord[];
     memory: MixWord[];
     lines: MixSourceLine[];
 }
 
-export interface MIXProgram {
+export interface MixProgram {
     start: number; // program start address,
-    sections: MIXSection[];
+    sections: MixSection[];
 }
 
 // @ts-ignore
@@ -431,7 +431,7 @@ class MIXAssembler {
     private readonly _locals: Record<number, number[]>;
     private readonly _literals: Literal[];
     private _unresolvedReferences: UnresolvedReference[];
-    private _mixProgram: MIXProgram|undefined;
+    private _mixProgram: MixProgram|undefined;
     private _counter: number; // the unit counter referred to as '*'
     // @ts-ignore
     private _line: string;
@@ -450,8 +450,8 @@ class MIXAssembler {
     }
 
     compile() {
-        const sections: MIXSection[] = [];
-        let cur: MIXSection = {
+        const sections: MixSection[] = [];
+        let cur: MixSection = {
             offset: 0,
             data: [],
             memory: [],
@@ -597,7 +597,7 @@ class MIXAssembler {
     }
 }
 
-export function compile(program: string): MIXProgram {
+export function compile(program: string): MixProgram {
     const asm = new MIXAssembler(program);
     return asm.compile();
 }

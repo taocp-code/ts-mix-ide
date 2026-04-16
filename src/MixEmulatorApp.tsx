@@ -23,7 +23,7 @@ import {
 import CodeMirror from '@uiw/react-codemirror';
 import {keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
-import {compile, type MIXProgram, type MIXSection} from "./mix/mix-asm.ts";
+import {compile, type MixProgram, type MixSection} from "./mix/mix-asm.ts";
 import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
 import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
 import {formatBoolean, formatNumber, formatSign} from "./mix/utils.ts";
@@ -91,24 +91,24 @@ function MixStateView({mix}: { mix: MixEmulator }) {
         });
     }, []);
     return <>
-            <Box sx={{p: 1}}>
-                <Typography variant={"caption"}>Program Counter</Typography>
-                <MonospacedBox>
-                    {formatNumber(state.pc, 4)}
-                </MonospacedBox>
-            </Box>
-            <Box sx={{p: 1}}>
-                <Typography variant={"caption"}>Overflow</Typography>
-                <MonospacedBox>
-                    {formatBoolean(state.overflow)}
-                </MonospacedBox>
-            </Box>
-            <Box sx={{p: 1}}>
-                <Typography variant={"caption"}>Compare</Typography>
-                <MonospacedBox>
-                    {state.compare === 1 ? ">" : (state.compare === -1 ? '<' : '=')}
-                </MonospacedBox>
-            </Box>
+        <Box sx={{p: 1}}>
+            <Typography variant={"caption"}>Program Counter</Typography>
+            <MonospacedBox>
+                {formatNumber(state.pc, 4)}
+            </MonospacedBox>
+        </Box>
+        <Box sx={{p: 1}}>
+            <Typography variant={"caption"}>Overflow</Typography>
+            <MonospacedBox>
+                {formatBoolean(state.overflow)}
+            </MonospacedBox>
+        </Box>
+        <Box sx={{p: 1}}>
+            <Typography variant={"caption"}>Compare</Typography>
+            <MonospacedBox>
+                {state.compare === 1 ? ">" : (state.compare === -1 ? '<' : '=')}
+            </MonospacedBox>
+        </Box>
     </>;
 }
 
@@ -128,7 +128,19 @@ function RenderMixMemory({mix}: { mix: MixEmulator }) {
     </Grid>
 }
 
-function MixMachineController(halted: boolean, mix: MixEmulator, running: boolean, asyncStepDelayMs: number, mixProgram: MIXProgram | null, state: MixState) {
+interface MixMachineControllerProps {
+    mix: MixEmulator,
+    mixProgram: MixProgram | null;
+}
+
+function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
+    const [state, setState] = useState(mix.state);
+    const [asyncStepDelayMs] = useState(50);
+    useEffect(() => {
+        mix.onStateChange((e) => setState(e.state));
+    }, []);
+    const halted = state.halt;
+    const running = state.running;
     return <>
         {!halted && <><Tooltip title={'Step'}>
             <IconButton sx={{color: 'blue'}} onClick={() => {
@@ -146,11 +158,7 @@ function MixMachineController(halted: boolean, mix: MixEmulator, running: boolea
             </Tooltip>
             <Tooltip title={"Fast Run"}>
                 <IconButton disabled={running || halted} onClick={() => {
-                    MixWord.setEmitChange(false); // turn off word update events
-                    mix.run(false);
-                    MixWord.setEmitChange(true);
-                    mix.emitStateChange();  // manually trigger state change after run terminates.
-                    mix.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+                    mix.runAsync(0);
                 }}><FastForwardIcon/></IconButton>
             </Tooltip>
         </>}
@@ -163,38 +171,49 @@ function MixMachineController(halted: boolean, mix: MixEmulator, running: boolea
             }} disabled={running}><RestartAltIcon/></IconButton>
         </Tooltip>
         <Box>
-            {halted
-                ? <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>
-                : (
-                    state.running
-                        ? <Chip size={"small"} color={"success"} label={"Running"} sx={{m: 1}}/>
-                        : <Chip size={"small"} color={"default"} label={"Paused"} sx={{m: 1}}/>
-                )
-            }
-            <Chip size={"small"} color={"info"} label={`Total Time (u): ${state.totalTime}`} sx={{m: 1}}
-                  variant={"outlined"}/>
-            <Chip size={"small"} color={"info"} label={`IPS: ${state.ips.toFixed(3)}`} sx={{m: 1}}
-                  variant={"outlined"}/>
+            <Tooltip title={"Emulator Status"}>
+                {halted
+                    ? <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>
+                    : (
+                        state.running
+                            ? <Chip size={"small"} color={"success"} label={"Running"} sx={{m: 1}}/>
+                            : <Chip size={"small"} color={"default"} label={"Paused"} sx={{m: 1}}/>
+                    )
+                }
+            </Tooltip>
+            <Tooltip title={"Total real world time spent in execution."}>
+                <Chip size={"small"} color={"info"}
+                      label={`RTT: ${state.totalRealTime.toFixed(3)}s`} sx={{m: 1}}
+                      variant={"outlined"}/>
+            </Tooltip>
+            <Tooltip title={"Total MIX machine time spent in execution."}>
+                <Chip size={"small"} color={"info"} label={`MTT: ${state.totalTime}u`} sx={{m: 1}}
+                      variant={"outlined"}/>
+            </Tooltip>
+            <Tooltip title={"Total instructions executed."}>
+                <Chip size={"small"} color={"info"} label={`INS: ${state.instructions}`} sx={{m: 1}}
+                      variant={"outlined"}/>
+            </Tooltip>
+            <Tooltip title={"Instructions per second."}>
+                <Chip size={"small"} color={"info"} label={`IPS: ${state.ips.toFixed(1)}`} sx={{m: 1}}
+                      variant={"outlined"}/>
+            </Tooltip>
         </Box>
     </>;
 }
 
-function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MIXProgram | null }) {
+function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MixProgram | null }) {
     const [state, setState] = useState(mix.state);
-    const [asyncStepDelayMs] = useState(5);
     useEffect(() => {
         mix.onStateChange((e) => {
             setState(e.state);
         })
     }, []);
 
-    const running = state.running;
-    const halted = state.halt;
-
     return (<BoxViewSection>
         {state.error && <Alert variant={"filled"} color={"error"} title={state.error}/>}
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
-            {MixMachineController(halted, mix, running, asyncStepDelayMs, mixProgram, state)}
+            {<MixMachineController mix={mix} mixProgram={mixProgram}/>}
         </Box>
         <Divider/>
         <Box sx={{flexDirection: 'row', display: 'flex'}}>
@@ -223,7 +242,7 @@ function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MIXPr
 
 const extensions = [keymap.of(emacsStyleKeymap), lineNumbers()];
 
-function MixAsmEditor(props: { onCompile: (_: MIXProgram) => void }) {
+function MixAsmEditor(props: { onCompile: (_: MixProgram) => void }) {
     const [code, setCode] = useState(tableOfPrimes);
     useEffect(() => {
         const p = compile(code);
@@ -249,7 +268,7 @@ function MixAsmEditor(props: { onCompile: (_: MIXProgram) => void }) {
     </BoxViewSection>)
 }
 
-function MixProgramSection({section, pc, mix}: { section: MIXSection, pc: number, mix: MixEmulator }) {
+function MixProgramSection({section, pc, mix}: { section: MixSection, pc: number, mix: MixEmulator }) {
     const [profile, setProfile] = useState<Record<number, number>>({});
     const dataAndSource = useMemo(() =>
         section.data.map((w, i) => {
@@ -297,7 +316,7 @@ function MixProgramSection({section, pc, mix}: { section: MIXSection, pc: number
 }
 
 function MixProgramView({mix, mixProgram}: {
-    mix: MixEmulator, mixProgram: MIXProgram | null
+    mix: MixEmulator, mixProgram: MixProgram | null
 }) {
     const [pc, setPc] = useState(mix.pc);
     useEffect(() => {
@@ -328,7 +347,7 @@ function MixProgramView({mix, mixProgram}: {
 
 export function MixEmulatorApp() {
     const mix = useMemo(() => new MixEmulator(), []);
-    const [mixProgram, setMixProgram] = useState<MIXProgram | null>(null);
+    const [mixProgram, setMixProgram] = useState<MixProgram | null>(null);
 
     useEffect(() => {
         if (mixProgram !== null) {

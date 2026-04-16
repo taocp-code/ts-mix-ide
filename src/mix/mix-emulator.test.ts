@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import {MixEmulator} from "./mix-emulator.ts";
-import type {MIXProgram} from "./mix-asm.ts";
+import type {MixProgram} from "./mix-asm.ts";
 import {MixWord} from "./mix-word.ts";
 import {MixOpCodeMap, MixOpCodes} from "./mix-opcodes.ts";
 
@@ -9,7 +9,7 @@ function op(name: string, a: number = 0, i?: number, f?: number) {
     return MixWord.fromOp(a, i || 0, f || opcode.f, opcode.c);
 }
 
-function makeMixProgram(data: MixWord[], text: MixWord[], textOffset: number = 3000, dataOffset: number = 0): MIXProgram {
+function makeMixProgram(data: MixWord[], text: MixWord[], textOffset: number = 3000, dataOffset: number = 0): MixProgram {
     return {
         start: textOffset,
         sections: [
@@ -27,7 +27,7 @@ function makeMixProgram(data: MixWord[], text: MixWord[], textOffset: number = 3
     }
 }
 
-function addTwoNumbers(a: number, b: number): MIXProgram {
+function addTwoNumbers(a: number, b: number): MixProgram {
     return makeMixProgram(
         [
             new MixWord(a), // 0
@@ -39,7 +39,7 @@ function addTwoNumbers(a: number, b: number): MIXProgram {
         ]);
 }
 
-function subTwoNumbers(a: number, b: number): MIXProgram {
+function subTwoNumbers(a: number, b: number): MixProgram {
     return makeMixProgram(
         [
             new MixWord(a), // 0
@@ -51,7 +51,7 @@ function subTwoNumbers(a: number, b: number): MIXProgram {
         ]);
 }
 
-function mulTwoNumbers(a: number, b: number): MIXProgram {
+function mulTwoNumbers(a: number, b: number): MixProgram {
     return makeMixProgram(
         [
             new MixWord(a),
@@ -64,7 +64,7 @@ function mulTwoNumbers(a: number, b: number): MIXProgram {
     )
 }
 
-function divTwoNumbers(a: number, b: number): MIXProgram {
+function divTwoNumbers(a: number, b: number): MixProgram {
     return makeMixProgram(
         [
             new MixWord(a),
@@ -78,7 +78,7 @@ function divTwoNumbers(a: number, b: number): MIXProgram {
     )
 }
 
-function runMixProgram(mix: MixEmulator, program: MIXProgram) {
+function runMixProgram(mix: MixEmulator, program: MixProgram) {
     mix.reset();
     mix.loadProgram(program);
     mix.run();
