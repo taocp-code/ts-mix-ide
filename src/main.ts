@@ -223,10 +223,10 @@ function renderStatus(mix: MixEmulator, dom: HTMLDivElement) {
     tr3.appendChild(ov).textContent = mix.overflow.toString();
     statusTable.appendChild(tr3);
 
-    mix.onStateChange(({newState}) => {
-        pc.textContent = formatNumber(newState.pc, 4);
-        cmp.textContent = newState.compare.toString();
-        ov.textContent = newState.overflow.toString();
+    mix.onStateChange(({state}) => {
+        pc.textContent = formatNumber(state.pc, 4);
+        cmp.textContent = state.compare.toString();
+        ov.textContent = state.overflow.toString();
     });
 }
 

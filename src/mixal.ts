@@ -28,7 +28,7 @@ async function main() {
     mix.loadProgram(program);
     const ips = mix.run();
     console.log(`${ips} IPS`);
-    console.log(`${mix.cycles} MIX cycles`);
+    console.log(`${mix.totalTime} MIX cycles`);
     console.log(mix.profile);
 }
 
