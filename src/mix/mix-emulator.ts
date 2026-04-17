@@ -187,11 +187,8 @@ export class MixEmulator {
 
         let execAsync: Function = () => {};
         if (stepDelayMs > 0) {
-            let prevTime = performance.now();
             execAsync = () => {
-                const t = performance.now();
-                this.step(true, (t - prevTime)/1000);
-                prevTime = t;
+                this.step(true);
                 next(execAsync);
             }
         } else {
@@ -206,7 +203,6 @@ export class MixEmulator {
                 this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
             }
         }
-        this._instructions = 0;
         next(execAsync);
         this.emitStateChange();
     }

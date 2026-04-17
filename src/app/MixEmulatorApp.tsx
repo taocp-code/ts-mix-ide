@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {MixEmulator, type MixState} from "./mix/mix-emulator.ts";
+import {MixEmulator, type MixState} from "../mix/mix-emulator.ts";
 import {
     Alert,
     Box,
@@ -8,7 +8,6 @@ import {
     Chip,
     Container,
     Divider,
-    Grid,
     IconButton,
     Stack,
     Table,
@@ -21,12 +20,12 @@ import {
     Typography
 } from "@mui/material";
 import CodeMirror from '@uiw/react-codemirror';
-import {keymap, lineNumbers} from "@codemirror/view";
+import {EditorView, keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
-import {compile, type MixProgram, type MixSection} from "./mix/mix-asm.ts";
-import {MIX_WORD_SIZE, MixWord} from "./mix/mix-word.ts";
-import tableOfPrimes from "./mix-programs/table-of-primes.mixal?raw";
-import {formatBoolean, formatNumber, formatSign} from "./mix/utils.ts";
+import {compile, type MixProgram, type MixSection} from "../mix/mix-asm.ts";
+import {MIX_WORD_SIZE, MixWord} from "../mix/mix-word.ts";
+import tableOfPrimes from "../mix-programs/table-of-primes.mixal?raw";
+import {formatBoolean, formatNumber, formatSign} from "../mix/utils.ts";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FastForwardIcon from '@mui/icons-material/FastForward';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -34,16 +33,17 @@ import RedoIcon from '@mui/icons-material/Redo';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import {styled} from "@mui/material/styles";
 import {lightBlue, purple, yellow} from "@mui/material/colors";
+import mixLogo from '../../public/mix.png';
 
 const BoxViewSection = styled(Box)<BoxProps>(() => ({
-    width: '50%',
-    maxWidth: '50%',
     borderRadius: 1,
     border: 'silver',
     borderStyle: 'solid',
     borderWidth: 1,
     padding: 1,
     margin: 1,
+    display: 'flex',
+    flexDirection: 'column',
 }));
 
 const MonospacedBox = styled(Box)<BoxProps>(() => ({
@@ -138,19 +138,19 @@ function MixStateView({mix}: { mix: MixEmulator }) {
         });
     }, []);
     return <>
-        <Box sx={{p: 1}}>
+        <Box>
             <Typography variant={"caption"}>Program Counter</Typography>
             <MonospacedBox>
                 {formatNumber(state.pc, 4)}
             </MonospacedBox>
         </Box>
-        <Box sx={{p: 1}}>
+        <Box>
             <Typography variant={"caption"}>Overflow</Typography>
             <MonospacedBox>
                 {formatBoolean(state.overflow)}
             </MonospacedBox>
         </Box>
-        <Box sx={{p: 1}}>
+        <Box>
             <Typography variant={"caption"}>Compare</Typography>
             <MonospacedBox>
                 {state.compare === 1 ? ">" : (state.compare === -1 ? '<' : '=')}
@@ -167,9 +167,9 @@ function MixMemoryView({mix}: { mix: MixEmulator }) {
         }
         return wordViews;
     }, [mix]);
-    return <Grid sx={{p: 1}} container={true} spacing={0} columns={1}>
+    return <Box sx={{flexDirection: 'column'}}>
         {children}
-    </Grid>
+    </Box>
 }
 
 interface MixMachineControllerProps {
@@ -258,11 +258,11 @@ function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MixPr
 
     return (<BoxViewSection>
         {state.error && <Alert variant={"filled"} color={"error"} title={state.error}/>}
-        <Box sx={{flexDirection: 'row', display: 'flex'}}>
+        <Box sx={{flexDirection: 'row', display: 'flex', p: 1}}>
             {<MixMachineController mix={mix} mixProgram={mixProgram}/>}
         </Box>
         <Divider/>
-        <Box sx={{flexDirection: 'row', display: 'flex'}}>
+        <Box sx={{flexDirection: 'row', display: 'flex', p: 1}}>
             <MixStateView mix={mix}/>
         </Box>
         <Divider/>
@@ -280,13 +280,20 @@ function MixMachineView({mix, mixProgram}: { mix: MixEmulator, mixProgram: MixPr
             <MixWordView word={mix.rJ}/>
         </Box>
         <Divider/>
-        <Box sx={{maxHeight: '800px', overflowY: 'auto'}}>
+        <Box sx={{flexDirection: 'column', display: 'flex', p: 1, overflow: 'scroll'}}>
             <MixMemoryView mix={mix}/>
         </Box>
     </BoxViewSection>)
 }
 
-const extensions = [keymap.of(emacsStyleKeymap), lineNumbers()];
+const extensions = [
+    keymap.of(emacsStyleKeymap),
+    lineNumbers(),
+    EditorView.theme({
+        "&": {height: "100%", width: '500px', maxWidth: '500px'},
+        ".cm-scroller": {overflow: "auto"}
+    }),
+];
 
 interface MixAsmEditorProps {
     onCompile: (_: MixProgram) => void;
@@ -313,17 +320,16 @@ function MixAsmEditor({onCompile, mix}: MixAsmEditorProps) {
     }, [code]);
 
     return (<BoxViewSection>
-        <Box sx={{flexDirection: 'row', display: 'flex'}}>
+        <Box sx={{flexDirection: 'row', display: 'flex', height: '24px'}}>
             <Button disabled={state.running} onClick={() => {
                 startCompile();
             }}>
                 Compile
             </Button>
         </Box>
-        <CodeMirror value={code}
+        <Divider/>
+        <CodeMirror style={{fontSize: '0.8rem', flexGrow: 1, height: 'calc(100% - 30px)'}} value={code}
                     extensions={extensions}
-                    height={'auto'}
-                    minHeight={'800px'}
                     onChange={(value) => {
                         setCode(value);
                     }}
@@ -353,14 +359,16 @@ function MixProgramSection({section, pc, mix}: { section: MixSection, pc: number
                     backgroundColor: cur ? lightBlue[100] : 'auto',
                     cursor: 'pointer',
                     '&:hover .cell': {
-                        backgroundColor: yellow[100]
+                        backgroundColor: yellow[100],
+                        transition: 'background-color 0',
                     },
                     '.cell': {
-                        transition: 'background-color 500ms',
+                        transition: 'background-color 1000ms',
                     },
                     '&:hover .label': {
                         fontWeight: 'bold'
                     },
+                    transition: 'background-color 500ms',
                 }}
                 onMouseOver={() => {
                     mixMemoryWord.setAttr('focus', true);
@@ -408,7 +416,7 @@ function MixProgramView({mix, mixProgram}: {
         });
     }, []);
     return (<BoxViewSection>
-        <TableContainer sx={{overflowY: 'auto', maxHeight: '80vh'}}>
+        <TableContainer sx={{overflowY: 'auto', flexGrow: '1'}}>
             <Table size={"small"} stickyHeader={true} padding={"none"}>
                 <TableHead>
                     <TableRow sx={{fontWeight: "bold"}}>
@@ -439,9 +447,17 @@ export function MixEmulatorApp() {
     }, [mixProgram]);
 
     return (
-        <Container sx={{width: '100%', maxHeight: '800px'}} maxWidth={false}>
-            <Typography variant={'h6'}>MIX Playground</Typography>
-            <Stack direction={"row"}>
+        <Container sx={{maxWidth: '100%', height: '100vh'}} maxWidth={false}>
+            <Box sx={{
+                flexDirection: 'row', display: 'flex', p: '4px', height: '32px', '& img': {
+                    height: '100%',
+                },
+                width: '50%',
+            }}>
+                <img src={mixLogo} alt={"MIX"}/>
+            </Box>
+
+            <Stack direction={"row"} sx={{alignItems: 'stretch', maxHeight: 'calc(100% - 40px)'}}>
                 <MixAsmEditor onCompile={(p) => setMixProgram(p)} mix={mix}/>
                 <MixProgramView
                     mix={mix}
