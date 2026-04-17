@@ -187,15 +187,19 @@ export class MixEmulator {
 
         let execAsync: Function = () => {};
         if (stepDelayMs > 0) {
+            let prev = performance.now();
             execAsync = () => {
-                this.step(true);
+                const t = performance.now();
+                this.step(true, (t - prev)/1000);
+                prev = t;
                 next(execAsync);
             }
         } else {
+
             execAsync = () => {
                 MixWord.setEmitChange(false); // turn off word update events
                 while (!this._halt) {
-                    this.step(false);
+                    this.step(false, 0);
                 }
                 next(execAsync);
                 MixWord.setEmitChange(true);
