@@ -56,6 +56,9 @@ function isLocalSymbol(s: string, define: boolean = true): boolean {
 function isWhitespace(c: string) {
     return /\s/.test(c);
 }
+function isDefined(v: any): boolean {
+    return v !== undefined;
+}
 
 interface EvalContext {
     counter: number;
@@ -90,10 +93,11 @@ class SymbolExpr extends Expr{
             // referencing a local symbol
             return this.resolveLocal(ctx);
         }
-        if (!ctx.symbols[this._sym]) {
+        const v = ctx.symbols[this._sym];
+        if (!isDefined(v)) {
             ctx.unresolvedReferences.push(this._sym);
         }
-        return ctx.symbols[this._sym];
+        return v;
     }
 
     private resolveLocal(ctx: EvalContext) {
@@ -116,7 +120,7 @@ class SymbolExpr extends Expr{
                 }
             }
         }
-        if (value === undefined) {
+        if (!isDefined(value)) {
             ctx.unresolvedReferences.push(this._sym);
         }
         return value;
@@ -138,8 +142,8 @@ class UnaryExpr extends Expr{
     }
     eval(ctx: EvalContext): OptionalNumber {
         const v = this._expr.eval(ctx);
-        if (v) {
-            return this._sign == '-' ? -v : v;
+        if (isDefined(v)) {
+            return this._sign == '-' ? -v! : v!;
         }
     }
 }
@@ -156,14 +160,14 @@ class BinaryExpr extends Expr {
     eval(ctx: EvalContext): OptionalNumber {
         const lv = this._lhs.eval(ctx);
         const rv = this._rhs.eval(ctx);
-        if (lv && rv) {
+        if (isDefined(lv) && isDefined(rv)) {
             switch (this._op) {
-                case '+': return lv + rv;
-                case '-': return lv - rv;
-                case '*': return lv * rv;
-                case '/': return Math.floor(lv / rv);
-                case '//': return Math.floor(Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) * lv / rv);
-                case ':': return lv * 8 + rv;
+                case '+': return lv! + rv!;
+                case '-': return lv! - rv!;
+                case '*': return lv! * rv!;
+                case '/': return Math.floor(lv! / rv!);
+                case '//': return Math.floor(Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) * lv! / rv!);
+                case ':': return lv! * 8 + rv!;
             }
         }
     }
@@ -469,11 +473,19 @@ class MIXAssembler {
 
             const parser = new Parser(addr);
             if (op === 'EQU') {
-                const v = parser.parseWValueExpr().eval(this.context)!;
-                this.defineSymbol(loc, v);
+                const expr = parser.parseWValueExpr();
+                const ctx = this.context;
+                const v = expr.eval(ctx);
+                if (ctx.unresolvedReferences.length > 0) {
+
+                }
+                this.defineSymbol(loc, v!);
             } else if (op === 'ORIG') {
                 this.defineSymbol(loc, this._counter);
-                this._counter = parser.parseWValueExpr().eval(this.context)!;
+                const expr = parser.parseWValueExpr();
+                const ctx = this.context;
+                const v = expr.eval(ctx);
+                this._counter = v!;
                 if (cur.data.length === 0) {
                     cur.offset = this._counter;
                 } else {
@@ -515,7 +527,6 @@ class MIXAssembler {
                 start = parser.parseWValueExpr().eval(this.context)!;
             } else if (op in MixOpCodeMap) {
                 this.defineSymbol(loc, this._counter);
-                this.defineLocal(loc, this._counter);
                 const opcode = MixOpCodeMap[op];
                 const aExpr = parser.parseAExpr();
                 const iExpr = parser.parseIExpr();
@@ -572,7 +583,10 @@ class MIXAssembler {
     }
     private defineSymbol(sym: string, value: number) {
         if (isEmpty(sym)) return;
-        if (isLocalSymbol(sym)) return;
+        if (isLocalSymbol(sym)) {
+            this.defineLocal(sym, value);
+            return;
+        }
         if (sym in this._symbols) {
             throw new Error(`Redefinition of symbol ${sym}, existing value: ${this._symbols[sym]}`);
         }

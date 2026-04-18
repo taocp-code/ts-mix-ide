@@ -590,9 +590,11 @@ export function MixEmulatorApp() {
                 alignItems: 'stretch', maxHeight: mainUIMaxHeight,
                 width: '100%'
             }}>
-                <MixAsmEditor sx={{flexGrow: 1}} onCompile={(p) => setMixProgram(p)} mix={mix}/>
+                <MixAsmEditor
+                    sx={{flexGrow: 1, minWidth: '20%'}}
+                    onCompile={(p) => setMixProgram(p)} mix={mix}/>
                 <MixProgramView
-                    sx={{flexGrow: 2}}
+                    sx={{flexGrow: 2, minWidth: '25%'}}
                     mix={mix}
                     mixProgram={mixProgram}/>
                 <MixMachineView

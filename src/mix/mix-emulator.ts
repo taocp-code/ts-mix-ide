@@ -406,7 +406,7 @@ export class MixEmulator {
             m.sign = op.a.sign;
         }
         if (neg) m.sign = -m.sign;
-        register.store(new MixWord(M));
+        register.store(new MixWord(m.value));
     }
 
     private inc(op: MixOperation, register: MixWord, neg: boolean = false) {
