@@ -130,7 +130,6 @@ export class MixEmulator {
 
     onStateChange(callback: MixStateChangeCallback) {
         this._stateChangeCallback.push(callback);
-        console.log(`MIX Emulator onStateChange size: ${this._stateChangeCallback.length};`)
     }
 
     /**
@@ -348,6 +347,10 @@ export class MixEmulator {
 
     get state() {
         return this.getCurrentState();
+    }
+
+    get devices(): MixDevice[] {
+        return MixDevice.DEVICES;
     }
 
     private getI(i: number) {
@@ -771,12 +774,7 @@ export class MixEmulator {
         "IN": (op) => {
             // read data from device
             const M = this.getM(op.i, op.a);
-            const words = MixDevice.DEVICES[op.f].input();
-            let i = M;
-            for (const w of words) {
-                this._memory.store(i, w);
-                i++;
-            }
+            MixDevice.DEVICES[op.f].input(M, this);
         },
         "OUT": (op) => {
             const M = this.getM(op.i, op.a);

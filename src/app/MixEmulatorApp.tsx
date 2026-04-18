@@ -8,15 +8,18 @@ import {
     Chip,
     Container,
     Divider,
-    IconButton, Paper,
+    IconButton,
+    Paper,
     Stack,
     type SxProps,
+    Tab,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
+    Tabs,
     type Theme,
     Tooltip,
     Typography
@@ -33,15 +36,15 @@ import FastForwardIcon from '@mui/icons-material/FastForward';
 import PauseIcon from '@mui/icons-material/Pause';
 import RedoIcon from '@mui/icons-material/Redo';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import PrintIcon from '@mui/icons-material/Print';
 import {styled} from "@mui/material/styles";
 import {lightBlue, purple, red, yellow} from "@mui/material/colors";
-import mixLogo from '../../public/mix.png';
+import {type MixDevice, MixDeviceType} from "../mix/mix-io.ts";
+import {TtyIcon} from "./icons.tsx";
 
 const BoxViewSection = styled(Box)<BoxProps>(() => ({
     borderRadius: 1,
-    border: 'silver',
-    borderStyle: 'solid',
-    borderWidth: 1,
+    border: 'silver solid 1px',
     padding: 1,
     margin: 1,
     display: 'flex',
@@ -163,7 +166,7 @@ function MixMemoryView({mix}: { mix: MixEmulator }) {
     const children = useMemo(() => {
         const wordViews = [];
         for (const w of mix.memory) {
-            wordViews.push(<MixWordView word={w}/>);
+            wordViews.push(<MixWordView key={w.label} word={w}/>);
         }
         return wordViews;
     }, [mix]);
@@ -261,7 +264,7 @@ function MixMachineView({mix, mixProgram, sx}: MixMachineViewProps) {
     useEffect(() => {
         mix.onStateChange((e) => {
             setState(e.state);
-        })
+        });
     }, []);
 
     return (<BoxViewSection sx={sx}>
@@ -288,7 +291,7 @@ function MixMachineView({mix, mixProgram, sx}: MixMachineViewProps) {
             <MixWordView word={mix.rJ}/>
         </Stack>
         <Divider/>
-        <Box sx={{flexDirection: 'column', display: 'flex', p: 1, overflow: 'scroll'}}>
+        <Box sx={{flexDirection: 'column', display: 'flex', p: 0.5, overflowY: 'scroll'}}>
             <MixMemoryView mix={mix}/>
         </Box>
     </BoxViewSection>)
@@ -450,15 +453,127 @@ function MixProgramView({mix, mixProgram, sx}: MixProgramViewProps) {
     </BoxViewSection>)
 }
 
+interface MixDevicesViewProps {
+    devices: MixDevice[];
+    sx?: SxProps<Theme> | undefined;
+}
+
+function MixDeviceView({device}: { device: MixDevice }) {
+    const [lines, setLines] = useState<string[]>([]);
+    useEffect(() => {
+        device.onOutput((e) => {
+            if (e.lines) {
+                setLines(prev => [...prev, ...e.lines || []]);
+            }
+        });
+        device.onIoc((_) => {
+            setLines([]);
+        })
+    }, []);
+    return (<Box sx={{
+        overflowY: 'scroll',
+        maxHeight: '100%',
+    }}>
+        {lines.map((line, i) => <Box key={i} sx={{whiteSpace: 'pre'}}>{line}</Box>)}
+    </Box>)
+}
+
+interface MixDevicesByTypePanel {
+    deviceType: MixDeviceType,
+    activeDeviceType: MixDeviceType,
+    devices: MixDevice[]
+}
+
+function MixDevicesByTypePanel({deviceType, activeDeviceType, devices}: MixDevicesByTypePanel) {
+    return (<Box hidden={activeDeviceType !== deviceType} sx={{backgroundColor: yellow[50], flexGrow: 1, maxHeight: '100%'}}>
+        {devices.map((device, i) => <MixDeviceView key={i} device={device}/>)}
+    </Box>);
+}
+
+function MixDevicesView({devices, sx}: MixDevicesViewProps) {
+    const [activeDeviceType, setActiveDeviceType] = useState(MixDeviceType.PRINTER);
+
+    const devicesByType = useMemo(() => {
+        const map: Record<MixDeviceType, MixDevice[]> = {
+            CARD_PUNCHER: [],
+            CARD_READER: [],
+            DISK: [],
+            PAPER_TAPE: [],
+            PRINTER: [],
+            TAPE: [],
+            TYPEWRITER: []
+        };
+        for (const device of devices) {
+            map[device.type].push(device);
+        }
+        return map;
+    }, [devices]);
+    const deviceTypeTabs = useMemo(() => {
+        return [
+            [MixDeviceType.TYPEWRITER, TtyIcon],
+            [MixDeviceType.PRINTER, <PrintIcon/>],
+            //[MixDeviceType.CARD_PUNCHER, undefined],
+            //[MixDeviceType.CARD_READER, undefined],
+            //[MixDeviceType.PAPER_TAPE, undefined],
+            //[MixDeviceType.TAPE, undefined],
+            //[MixDeviceType.DISK, <SaveIcon/>],
+        ].map(([deviceType, icon], i) =>
+            <Tab key={i} sx={{
+                fontSize: '0.8rem',
+                '&.MuiTab-root': {
+                    alignItems: 'flex-end',
+                    padding: '4px 8px',
+                    minHeight: 'auto',
+                    minWidth: 'auto',
+                }
+            }} icon={icon} value={deviceType}/>
+        )
+    }, []);
+    const deviceTypePanels = useMemo(() => {
+        return [
+            MixDeviceType.TYPEWRITER,
+            MixDeviceType.PRINTER
+        ].map((deviceType) => {
+            return <MixDevicesByTypePanel
+                key={deviceType}
+                deviceType={deviceType}
+                devices={devicesByType[deviceType]}
+                activeDeviceType={activeDeviceType}/>
+        })
+    }, [devicesByType, activeDeviceType]);
+
+    return (<BoxViewSection sx={sx}>
+        <Box sx={{
+            display: 'flex', flexGrow: 1,
+            maxHeight: '100%',
+        }}>
+            <Tabs sx={{
+                minHeight: 'auto',
+                borderRight: 1,
+                borderColor: 'divider',
+            }}
+                  value={activeDeviceType}
+                  orientation={'vertical'}
+                  onChange={(_, newValue) => setActiveDeviceType(newValue)}>
+                {deviceTypeTabs}
+            </Tabs>
+            {deviceTypePanels}
+        </Box>
+    </BoxViewSection>);
+}
+
 export function MixEmulatorApp() {
     const mix = useMemo(() => new MixEmulator(), []);
     const [mixProgram, setMixProgram] = useState<MixProgram | null>(null);
+    const [devicesHeight] = useState(340); // px
 
     useEffect(() => {
         if (mixProgram !== null) {
             mix.loadProgram(mixProgram);
         }
     }, [mixProgram]);
+
+    const mainUIMaxHeight = `calc(100% - ${devicesHeight + 40}px)`;
 
     return (
         <Container sx={{maxWidth: '100%', height: '100vh'}} maxWidth={false}>
@@ -468,11 +583,11 @@ export function MixEmulatorApp() {
                 },
                 width: '100%',
             }}>
-                <img src={mixLogo} alt={"MIX"}/>
+                <img src={'/mix.png'} alt={"MIX"}/>
             </Box>
 
             <Stack direction={"row"} sx={{
-                alignItems: 'stretch', maxHeight: 'calc(100% - 40px)',
+                alignItems: 'stretch', maxHeight: mainUIMaxHeight,
                 width: '100%'
             }}>
                 <MixAsmEditor sx={{flexGrow: 1}} onCompile={(p) => setMixProgram(p)} mix={mix}/>
@@ -484,6 +599,14 @@ export function MixEmulatorApp() {
                     sx={{flexGrow: 2}}
                     mix={mix} mixProgram={mixProgram}/>
             </Stack>
+
+            <Box sx={{
+                height: `${devicesHeight}px`,
+                display: 'flex',
+                flexDirection: 'column',
+            }}>
+                <MixDevicesView devices={mix.devices} sx={{flexGrow: '1', maxHeight: '100%'}}/>
+            </Box>
         </Container>
     )
 }

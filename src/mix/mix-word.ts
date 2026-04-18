@@ -192,7 +192,6 @@ export class MixWord implements Iterable<MixByte> {
      */
     onChange(callback: MixWordChangeCallback) {
         this._onChange.push(callback);
-        console.log(`${this._label} onChange size: ${this._onChange.length};`)
     }
 
     /**
