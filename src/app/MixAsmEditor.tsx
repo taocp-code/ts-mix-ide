@@ -1,12 +1,58 @@
 import {EditorView, keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
-import {compile, type MixProgram} from "../mix/mix-asm.ts";
-import {MixEmulator} from "../mix/mix-emulator.ts";
-import {Box, Button, Divider, type SxProps, type Theme} from "@mui/material";
-import React, {useCallback, useEffect, useState} from "react";
-import tableOfPrimes from "../mix-programs/table-of-primes.mixal?raw";
+import {compile, type MixProgram} from "../emulator/mix-asm.ts";
+import {MixEmulator} from "../emulator/mix-emulator.ts";
+import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme} from "@mui/material";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
+import tableOfPrimes from "../example-mix-programs/table-of-primes.mixal?raw";
+import {ExampleMixPrograms} from "../example-mix-programs";
 import {PanelBox} from "./Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
+
+interface EditorFileMenuProps {
+    onOpenFile: (code: string) => void;
+}
+
+function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
+    const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    const open = Boolean(anchorEl);
+    const id = open ? 'examples-popover' : undefined;
+
+    const examples = useMemo(() => {
+        return Object.entries(ExampleMixPrograms).map(([path, {src}], i) => {
+            return (
+                <MenuItem key={i} onClick={() => {
+                    onOpenFile(src);
+                    handleClose();
+                }
+                }>{path.substring(2)}</MenuItem>
+            )
+        })
+    }, [ExampleMixPrograms]);
+
+    return (<>
+        <Button onClick={handleClick}>Examples</Button>
+        <Menu
+            id={id}
+            open={open}
+            anchorEl={anchorEl}
+            onClose={handleClose}
+            anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+            }}>
+            {examples}
+        </Menu>
+    </>)
+}
 
 const extensions = [
     keymap.of(emacsStyleKeymap),
@@ -44,6 +90,7 @@ export function MixAsmEditor({onCompile, mix, sx}: MixAsmEditorProps) {
 
     return (<PanelBox sx={sx}>
         <Box sx={{flexDirection: 'row', display: 'flex', height: '24px'}}>
+            <EditorFileMenu onOpenFile={(value) => setCode(value)}/>
             <Button disabled={state.running} onClick={() => {
                 startCompile();
             }}>

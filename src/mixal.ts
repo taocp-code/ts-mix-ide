@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
-import {compile} from "./mix/mix-asm.ts";
-import {MixEmulator} from "./mix/mix-emulator.ts";
+import {compile} from "./emulator/mix-asm.ts";
+import {MixEmulator} from "./emulator/mix-emulator.ts";
 
 async function readAll(filename: string) {
     const fin = await fs.open(filename);
@@ -16,7 +16,7 @@ async function readAll(filename: string) {
 }
 
 async function main() {
-    let sourceFile = 'src/mix-programs/table-of-primes.mixal';
+    let sourceFile = 'src/example-mix-programs/table-of-primes.mixal';
     if (process.argv.length > 2) {
         sourceFile = process.argv[2];
     }

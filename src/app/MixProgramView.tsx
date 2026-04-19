@@ -1,7 +1,7 @@
-import type {MixProgram, MixSection} from "../mix/mix-asm.ts";
-import {MixEmulator} from "../mix/mix-emulator.ts";
+import type {MixProgram, MixSection} from "../emulator/mix-asm.ts";
+import {MixEmulator} from "../emulator/mix-emulator.ts";
 import React, {useEffect, useMemo, useState} from "react";
-import {formatNumber} from "../mix/utils.ts";
+import {formatNumber} from "../emulator/utils.ts";
 import {
     type SxProps,
     Table,

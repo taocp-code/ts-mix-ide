@@ -1,7 +1,7 @@
 import {MonospacedBox} from "./Common.tsx";
-import {formatNumber, formatSign} from "../mix/utils.ts";
+import {formatNumber, formatSign} from "../emulator/utils.ts";
 import React, {useEffect, useRef, useState} from "react";
-import {MixWord} from "../mix/mix-word.ts";
+import {MixWord} from "../emulator/mix-word.ts";
 import {Box, Paper} from "@mui/material";
 import {purple, red, yellow} from "@mui/material/colors";
 

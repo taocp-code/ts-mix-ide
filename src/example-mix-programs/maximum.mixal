@@ -9,6 +9,7 @@ X equ 1000
   con 12
   orig 3000
 START ENT1 7
+     IOC 0(18)
 INIT ENT3 0,1
      JMP CHANGEM
 LOOP CMPA X,3
@@ -17,5 +18,8 @@ CHANGEM ENT2 0,3
      LDA X,3
      DEC3 1
      J3P LOOP
+     CHAR
+     STX 0(1:4)
+     OUT 0(18)
      HLT
      END START

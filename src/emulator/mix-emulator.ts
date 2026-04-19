@@ -180,8 +180,8 @@ export class MixEmulator {
                 this._runAsyncTimer = setTimeout(fn, stepDelayMs);
             } else {
                 this._runAsyncTimer = null;
+                this.emitStateChange();
             }
-
         }
 
         let execAsync: Function = () => {};
@@ -194,7 +194,6 @@ export class MixEmulator {
                 next(execAsync);
             }
         } else {
-
             execAsync = () => {
                 MixWord.setEmitChange(false); // turn off word update events
                 while (!this._halt) {

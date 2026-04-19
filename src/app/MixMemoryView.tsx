@@ -1,4 +1,4 @@
-import {MixEmulator} from "../mix/mix-emulator.ts";
+import {MixEmulator} from "../emulator/mix-emulator.ts";
 import React, {useMemo} from "react";
 import {MixWordView} from "./MixWord.tsx";
 import {Box} from "@mui/material";
