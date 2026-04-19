@@ -49,7 +49,7 @@ export function MixWordValue({word, showLabel}: { word: MixWord, showLabel?: boo
     </Box>
 }
 
-export function MixWordView({word}: { word: MixWord }) {
+export function MixWordView({word}: { word: MixWord, hideInitially?: boolean }) {
     const [focus, setFocus] = useState(false);
     const ref = useRef<HTMLDivElement | null>(null);
     useEffect(() => {

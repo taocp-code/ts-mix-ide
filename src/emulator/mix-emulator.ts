@@ -64,6 +64,7 @@ export interface MixState {
 
 export interface MixStateChangeEvent {
     state: MixState;
+    reset: boolean;
 }
 
 export type MixStateChangeCallback = (e: MixStateChangeEvent) => void;
@@ -105,7 +106,11 @@ export class MixEmulator {
     // Error handling
     private _error?: string = undefined;
 
+    // Debugging
+    private _breakpoints: Set<number>;
+
     constructor() {
+        this._breakpoints = new Set<number>();
         this.reset();
     }
 
@@ -125,7 +130,7 @@ export class MixEmulator {
         this._instructions = 0;
         this._profile = {};
         this._error = undefined;
-        this.emitStateChange();
+        this.emitStateChange(true);
     }
 
     onStateChange(callback: MixStateChangeCallback) {
@@ -166,6 +171,17 @@ export class MixEmulator {
         this.emitRegisterAndMemoryChange();
     }
 
+    addBreakpoint(addr: number) {
+        this._breakpoints.add(addr);
+    }
+
+    removeBreakpoint(addr: number) {
+        this._breakpoints.delete(addr);
+    }
+
+    shouldPause(): boolean {
+        return this._breakpoints.has(this._pc);
+    }
 
     runAsync(stepDelayMs: number = 1) {
         if (this._halt) {
@@ -177,7 +193,12 @@ export class MixEmulator {
         }
         const next = (fn: Function) => {
             if (!this._halt) {
-                this._runAsyncTimer = setTimeout(fn, stepDelayMs);
+                if (this.shouldPause()) {
+                    this._runAsyncTimer = null;
+                    this.emitStateChange();
+                } else {
+                    this._runAsyncTimer = setTimeout(fn, stepDelayMs);
+                }
             } else {
                 this._runAsyncTimer = null;
                 this.emitStateChange();
@@ -192,20 +213,26 @@ export class MixEmulator {
                 this.step(true, (t - prev)/1000);
                 prev = t;
                 next(execAsync);
-            }
+            };
+            execAsync();
         } else {
             execAsync = () => {
-                MixWord.setEmitChange(false); // turn off word update events
-                while (!this._halt) {
-                    this.step(false, 0);
-                }
-                next(execAsync);
-                MixWord.setEmitChange(true);
-                this.emitStateChange();  // manually trigger state change after run terminates.
-                this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
-            }
+                setTimeout(() => {
+                    MixWord.setEmitChange(false); // turn off word update events
+                    while (!this._halt) {
+                        this.step(false, 0);
+                        if (this.shouldPause()) {
+                            break;
+                        }
+                    }
+                    MixWord.setEmitChange(true);
+                    this._runAsyncTimer = null;
+                    this.emitStateChange();  // manually trigger state change after run terminates.
+                    this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+                });
+            };
+            execAsync();
         }
-        next(execAsync);
         this.emitStateChange();
     }
 
@@ -261,9 +288,10 @@ export class MixEmulator {
         if (emitStateChange) this.emitStateChange();
     }
 
-    emitStateChange() {
+    emitStateChange(reset: boolean = false) {
         const event: MixStateChangeEvent = {
             state: this.state,
+            reset
         };
         this._stateChangeCallback.forEach(c => c(event));
     }

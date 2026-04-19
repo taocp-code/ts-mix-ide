@@ -3,6 +3,8 @@ import {MixEmulator} from "../emulator/mix-emulator.ts";
 import React, {useEffect, useMemo, useState} from "react";
 import {formatNumber} from "../emulator/utils.ts";
 import {
+    Box,
+    Stack,
     type SxProps,
     Table,
     TableBody,
@@ -13,12 +15,15 @@ import {
     type Theme,
     Typography
 } from "@mui/material";
-import {lightBlue, yellow} from "@mui/material/colors";
+import {lightBlue, red, yellow} from "@mui/material/colors";
 import {MixWordValue} from "./MixWord.tsx";
 import {PanelBox} from "./Common.tsx";
+import ForwardIcon from '@mui/icons-material/Forward';
+import CircleIcon from '@mui/icons-material/Circle';
 
 function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: number, mix: MixEmulator }) {
     const [profile, setProfile] = useState<Record<number, number>>({});
+    const [breakPoints, setBreakPoints] = useState<Set<number>>(new Set<number>());
     const dataAndSource = useMemo(() =>
         section.data.map((_, i) => {
             return {
@@ -33,6 +38,7 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
             const {label, addr, source, mixMemoryWord} = line;
             const execCount = profile[addr] || 0;
             const cur = pc === addr;
+            const isBreakpoint = breakPoints.has(addr);
             return <TableRow
                 key={label}
                 sx={{
@@ -42,8 +48,8 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                         backgroundColor: yellow[100],
                         transition: 'background-color 0',
                     },
-                    '.cell': {
-                        transition: 'background-color 1000ms',
+                    '& .cell': {
+                        transition: 'background-color 100ms',
                     },
                     '&:hover .label': {
                         fontWeight: 'bold'
@@ -58,9 +64,34 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                 }}>
                 <TableCell className={"cell"} align={'left'}
                            sx={{paddingLeft: '4px', whiteSpace: 'pre', fontFamily: "monospace"}}>
-                    {cur ? ">" : " "}{execCount.toString().padEnd(6, ' ')}</TableCell>
-                <TableCell className={"cell"} align={'right'} sx={{paddingRight: '4px'}}>
-                    <Typography className={"label"} variant={"caption"}>{label}</Typography>
+                    {execCount.toString().padEnd(6, ' ')}
+                </TableCell>
+                <TableCell className={"cell"} align={'right'} sx={{paddingRight: '4px'}}
+                           onClick={() => {
+                               setBreakPoints((prevState) => {
+                                   if (prevState.has(addr)) {
+                                       prevState.delete(addr);
+                                       mix.removeBreakpoint(addr);
+                                   } else {
+                                       prevState.add(addr);
+                                       mix.addBreakpoint(addr);
+                                   }
+                                   return new Set<number>(prevState);
+                               });
+                           }}>
+                    <Stack direction={"row"} sx={{borderLeft: 1, borderRight: 1, borderColor: 'divider'}}>
+                        <Box sx={{
+                            display: 'grid', justifyItems: 'center', alignItems: 'center', '& *': {gridColumnStart: 1, gridRowStart: 1}
+                        }}>
+                            <CircleIcon sx={{color: red[700]}} fontSize={"small"}
+                                        visibility={isBreakpoint ? 'visible' : 'hidden'}/>
+                            <ForwardIcon sx={{color: yellow[700]}} fontSize={"small"}
+                                         visibility={cur ? 'visible' : 'hidden'}/>
+                        </Box>
+                        <Typography className={"label"} variant={"caption"}>
+                            {label}
+                        </Typography>
+                    </Stack>
                 </TableCell>
                 <TableCell className={"cell"} sx={{paddingLeft: '4px'}}>
                     <MixWordValue word={mixMemoryWord}/>
@@ -79,7 +110,7 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                 </TableCell>
             </TableRow>
         });
-    }, [dataAndSource, profile, pc]);
+    }, [dataAndSource, profile, pc, breakPoints]);
     useEffect(() => {
         mix.onStateChange((e) => setProfile(e.state.profile));
     }, []);
