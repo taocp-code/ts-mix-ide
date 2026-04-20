@@ -1,6 +1,14 @@
 import * as fs from "fs/promises";
 import {compile} from "./emulator/mix-asm.ts";
 import {MixEmulator} from "./emulator/mix-emulator.ts";
+import {
+    CardPuncher,
+    CardReader,
+    consoleTextSink,
+    createTextSource,
+    type MixDevice,
+    MixPrinter
+} from "./emulator/io/mix-device.ts";
 
 async function readAll(filename: string) {
     const fin = await fs.open(filename);
@@ -24,7 +32,11 @@ async function main() {
     const content = await readAll(sourceFile);
     console.log(`Source file: ${sourceFile}, size: ${content.length} bytes.`);
     const program = compile(content);
-    const mix = new MixEmulator();
+    const devices: Record<number, MixDevice> = {};
+    devices[16] = new CardReader(createTextSource(["A2B5E3426FGOZYW3210PQ89R."]));
+    devices[17] = new CardPuncher(consoleTextSink);
+    devices[18] = new MixPrinter(consoleTextSink, () => Promise.resolve());
+    const mix = new MixEmulator(devices);
     mix.loadProgram(program);
     const ips = mix.run();
     console.log(`${ips} IPS`);

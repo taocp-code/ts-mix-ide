@@ -2,7 +2,8 @@ import React, {useEffect, useMemo, useState} from "react";
 import {Box, type SxProps, Tab, Tabs, type Theme} from "@mui/material";
 import PrintIcon from '@mui/icons-material/Print';
 import {yellow} from "@mui/material/colors";
-import {type MixDevice, MixDeviceType} from "../emulator/mix-io.ts";
+import {type MixDevice} from "../emulator/mix-io.ts";
+import {MixDeviceType} from "../emulator/io/mix-device.ts";
 
 interface MixDevicesViewProps {
     devices: MixDevice[];

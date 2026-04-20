@@ -3,7 +3,7 @@
  */
 import {F_OP_ADDR, F_OP_F, F_OP_I, MIX_BYTE_MAX, MIX_WORD_SIZE, MixWord} from "./mix-word.ts";
 import {MixOpCodeMap} from "./mix-opcodes.ts";
-import {encode} from "./mix-chars.ts";
+import {encodeToMixBytes} from "./mix-chars.ts";
 
 export interface MixSourceLine {
     lineNo: number;
@@ -502,7 +502,7 @@ class MIXAssembler {
                 this._counter++;
             } else if (op === 'ALF') {
                 this.defineSymbol(loc, this._counter);
-                cur.data.push(MixWord.fromBytes([1, ...encode(addr)]));
+                cur.data.push(MixWord.fromBytes([1, ...encodeToMixBytes(addr)]));
                 cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
                 this._counter++;
             } else if (op === 'END') {

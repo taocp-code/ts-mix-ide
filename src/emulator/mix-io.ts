@@ -3,17 +3,8 @@
  * */
 import {MIX_WORD_SIZE, type MixWord} from "./mix-word.ts";
 import type {MixEmulator} from "./mix-emulator.ts";
-import {decode} from "./mix-chars.ts";
-
-export enum MixDeviceType {
-    TAPE = "TAPE",
-    DISK = "DISK",
-    CARD_READER = "CARD_READER",
-    CARD_PUNCHER = "CARD_PUNCHER",
-    PRINTER = "PRINTER",
-    TYPEWRITER = "TYPEWRITER",
-    PAPER_TAPE = "PAPER_TAPE",
-}
+import {decodeToMixChars} from "./mix-chars.ts";
+import {MixDeviceType} from "./io/mix-device.ts";
 
 export type MixDeviceTypeKey = keyof typeof MixDeviceType;
 
@@ -145,7 +136,7 @@ export class MixDevice {
                 for (let l = 1; l <= MIX_WORD_SIZE; l++) {
                     bytes.push(word.getByte(l));
                 }
-                const text = decode(bytes);
+                const text = decodeToMixChars(bytes);
                 lines.push(text);
             }
             this.emitOutputEvent({

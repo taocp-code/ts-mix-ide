@@ -4,11 +4,11 @@ for (let i = 0; i < CHARS.length; i++) {
     NUMS[CHARS[i]] = i;
 }
 
-export function decode(bytes: number[]) {
+export function decodeToMixChars(bytes: number[]) {
     return bytes.map(b => CHARS[b]).join('');
 }
 
-export function encode(s: string) {
+export function encodeToMixBytes(s: string) {
     const bytes: number[] = [];
     for (let i = 0; i < s.length; i++) {
         bytes.push(NUMS[s[i]]);

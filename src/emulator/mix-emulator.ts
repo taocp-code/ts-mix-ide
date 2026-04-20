@@ -2,6 +2,7 @@ import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOve
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MixProgram} from "./mix-asm.ts";
 import {MixDevice} from "./mix-io.ts";
+import {createMixMemoryWordSource, type MixDevice as IMixDevice} from './io/mix-device.ts';
 import {NUMS} from "./mix-chars.ts";
 import {formatNumber} from "./utils.ts";
 
@@ -109,8 +110,12 @@ export class MixEmulator {
     // Debugging
     private _breakpoints: Set<number>;
 
-    constructor() {
+    // New IO devices
+    private _devices: Record<number, IMixDevice> = {};
+
+    constructor(devices: Record<number, IMixDevice> = {}) {
         this._breakpoints = new Set<number>();
+        this._devices = devices;
         this.reset();
     }
 
@@ -205,12 +210,13 @@ export class MixEmulator {
             }
         }
 
-        let execAsync: Function = () => {};
+        let execAsync: Function = () => {
+        };
         if (stepDelayMs > 0) {
             let prev = performance.now();
             execAsync = () => {
                 const t = performance.now();
-                this.step(true, (t - prev)/1000);
+                this.step(true, (t - prev) / 1000);
                 prev = t;
                 next(execAsync);
             };
@@ -283,7 +289,7 @@ export class MixEmulator {
         if (!this._profile[opAddr]) this._profile[opAddr] = 0;
         this._profile[opAddr]++;
         this._instructions++;
-        this._totalRealTime += dt + (performance.now() - st)/1000;
+        this._totalRealTime += dt + (performance.now() - st) / 1000;
 
         if (emitStateChange) this.emitStateChange();
     }
@@ -796,24 +802,49 @@ export class MixEmulator {
         // IO
         "IOC": (op) => {
             const M = this.getM(op.i, op.a);
-            MixDevice.DEVICES[op.f].ioc(M, this);
+            const device = this._devices[op.f];
+            if (device) {
+                return device.ioc(M, this.rX.value);
+            } else {
+                MixDevice.DEVICES[op.f].ioc(M, this);
+            }
         },
         "IN": (op) => {
             // read data from device
             const M = this.getM(op.i, op.a);
-            MixDevice.DEVICES[op.f].input(M, this);
+            const device = this._devices[op.f];
+            if (device) {
+                return device.read(this.rX.value).then(data => {
+                    for (let i = 0; i < data.length; i++) {
+                        this.memory.store(M + i, data[i]);
+                    }
+                });
+            } else {
+                MixDevice.DEVICES[op.f].input(M, this);
+            }
         },
         "OUT": (op) => {
             const M = this.getM(op.i, op.a);
-            MixDevice.DEVICES[op.f].output(M, this);
+            const device = this._devices[op.f];
+            if (device) {
+                return device.write(this.rX.value, createMixMemoryWordSource(this, M));
+            } else {
+                MixDevice.DEVICES[op.f].output(M, this);
+            }
         },
         "JRED": (op) => {
-            if (MixDevice.DEVICES[op.f].ready) {
+            const device = this._devices[op.f];
+            if (device) {
+                if (!device.busy) this.jmp(op);
+            } else if (MixDevice.DEVICES[op.f].ready) {
                 this.jmp(op);
             }
         },
         "JBUS": (op) => {
-            if (!MixDevice.DEVICES[op.f].ready) {
+            const device =this._devices[op.f];
+            if (device) {
+                if (device.busy) this.jmp(op);
+            } else if (!MixDevice.DEVICES[op.f].ready) {
                 this.jmp(op);
             }
         },

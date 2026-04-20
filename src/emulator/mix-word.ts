@@ -107,7 +107,13 @@ export class MixWord implements Iterable<MixByte> {
     }
 
     static fromBytes(bytes: MixByte[]) {
-        if (bytes.length != MIX_WORD_SIZE + 1) throw new Error(`Invalid bytes length: ${bytes.length}.`);
+        if (bytes.length === MIX_WORD_SIZE) {
+            bytes = [1, ...bytes];
+        }
+        if (bytes.length !== MIX_WORD_SIZE + 1) {
+            throw new Error(`Invalid bytes length: ${bytes.length}.`);
+        }
+
         const w = new MixWord();
         w._bytes = bytes.slice(0, MIX_WORD_SIZE + 1)
             .map((b, i) => i == 0 ? _sign_of(b) : Math.abs(b) % MIX_BYTE_MAX);
