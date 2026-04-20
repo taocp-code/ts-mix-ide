@@ -27,22 +27,22 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
     const running = state.running;
     return <>
         {<><Tooltip title={'Step'}>
-            <IconButton sx={{color: 'blue'}} onClick={() => {
-                mix.step();
+            <IconButton sx={{color: 'blue'}} onClick={async () => {
+                await mix.step();
             }} disabled={running || halted}><RedoIcon/></IconButton>
         </Tooltip>
             <Tooltip title={running ? 'Stop' : 'Run'}>
-                <IconButton disabled={halted} sx={{color: running ? 'red' : 'green'}} onClick={() => {
+                <IconButton disabled={halted} sx={{color: running ? 'red' : 'green'}} onClick={async () => {
                     if (!running) {
-                        mix.runAsync(asyncStepDelayMs);
+                        await mix.runAsync(asyncStepDelayMs);
                     } else {
                         mix.stopAsync();
                     }
                 }}>{running ? <PauseIcon/> : <PlayArrowIcon/>}</IconButton>
             </Tooltip>
             <Tooltip title={"Fast Run"}>
-                <IconButton disabled={running || halted} onClick={() => {
-                    mix.runAsync(0);
+                <IconButton disabled={running || halted} onClick={async () => {
+                    await mix.runAsync(0);
                 }}><FastForwardIcon/></IconButton>
             </Tooltip>
         </>}

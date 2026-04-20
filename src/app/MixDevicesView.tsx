@@ -43,7 +43,7 @@ function MixDevicesByTypePanel({deviceType, activeDeviceType, devices}: MixDevic
     </Box>);
 }
 
-export function MixDevicesView({devices}: MixDevicesViewProps) {
+export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
     const [activeDeviceType, setActiveDeviceType] = useState(MixDeviceType.PRINTER);
 
     const devicesByType = useMemo(() => {
@@ -102,6 +102,7 @@ export function MixDevicesView({devices}: MixDevicesViewProps) {
         <Box sx={{
             display: 'flex', flexGrow: 1,
             maxHeight: '100%',
+            ...sx
         }}>
             <Tabs sx={{
                 minHeight: 'auto',

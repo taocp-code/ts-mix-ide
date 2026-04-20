@@ -44,7 +44,7 @@ function MixDevicesDrawer({devices, devicesHeight, onStateChange}: {
                     <Typography>I/O</Typography>
                 </Button>
             </Box>
-            {<MixDevicesView devices={devices} sx={{flexGrow: '1', maxHeight: '100%', visibility: open ? 'visible' : 'hidden'}}/>}
+            {<MixDevicesView devices={devices} sx={{flexGrow: '1', maxHeight: '100%', display: open ? 'flex' : 'none'}}/>}
         </PanelBox>
     );
 }

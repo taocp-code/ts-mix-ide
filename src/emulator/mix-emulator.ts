@@ -49,7 +49,7 @@ class MixMemory implements Iterable<MixWord> {
     }
 }
 
-export type MixOpFunc = (op: MixOperation) => Promise<void>|undefined;
+export type MixOpFunc = (op: MixOperation) => Promise<void> | undefined;
 
 export interface MixState {
     pc: number;
@@ -113,7 +113,7 @@ export class MixEmulator {
     private _breakpoints: Set<number>;
 
     // New IO devices
-    private _devices: Record<number, IMixDevice> = {};
+    private readonly _devices: Record<number, IMixDevice> = {};
 
     constructor(devices: Record<number, IMixDevice> = {}) {
         this._breakpoints = new Set<number>();
@@ -190,7 +190,7 @@ export class MixEmulator {
         return this._breakpoints.has(this._pc);
     }
 
-    runAsync(stepDelayMs: number = 1) {
+    async runAsync(stepDelayMs: number = 1) {
         if (this._halt) {
             return;
         }
@@ -198,50 +198,42 @@ export class MixEmulator {
             // already running.
             return;
         }
-        const next = (fn: Function) => {
-            if (!this._halt) {
+
+        if (stepDelayMs <= 0) {
+            MixWord.setEmitChange(false); // turn off word update events
+            while (!this._halt) {
+                await this.step(false, 0);
                 if (this.shouldPause()) {
-                    this._runAsyncTimer = null;
-                    this.emitStateChange();
-                } else {
-                    this._runAsyncTimer = setTimeout(fn, stepDelayMs);
+                    break;
                 }
-            } else {
-                this._runAsyncTimer = null;
-                this.emitStateChange();
             }
+            MixWord.setEmitChange(true);
+            this._runAsyncTimer = null;
+            this.emitStateChange();  // manually trigger state change after run terminates.
+            this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+            return;
         }
 
-        let execAsync: Function = () => {
-        };
-        if (stepDelayMs > 0) {
+        return new Promise((resolve, reject) => {
             let prev = performance.now();
-            execAsync = () => {
+            const execAsync = () => {
                 const t = performance.now();
-                this.step(true, (t - prev) / 1000);
-                prev = t;
-                next(execAsync);
-            };
-            execAsync();
-        } else {
-            execAsync = () => {
-                setTimeout(() => {
-                    MixWord.setEmitChange(false); // turn off word update events
-                    while (!this._halt) {
-                        this.step(false, 0);
-                        if (this.shouldPause()) {
-                            break;
+                this.step(true, (t - prev) / 1000)
+                    .then(() => {
+                        prev = t;
+                        if (this._halt || this.shouldPause()) {
+                            this._runAsyncTimer = null;
+                            this.emitStateChange();
+                            resolve(undefined);
+                            return;
+                        } else {
+                            this._runAsyncTimer = setTimeout(execAsync, stepDelayMs);
                         }
-                    }
-                    MixWord.setEmitChange(true);
-                    this._runAsyncTimer = null;
-                    this.emitStateChange();  // manually trigger state change after run terminates.
-                    this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
-                });
+                    }).catch(reject);
             };
             execAsync();
-        }
-        this.emitStateChange();
+            this.emitStateChange();
+        });
     }
 
     stopAsync() {
@@ -314,10 +306,6 @@ export class MixEmulator {
 
     get overflow() {
         return this._overflow;
-    }
-
-    get compare() {
-        return this._compare;
     }
 
     get pc() {
@@ -476,7 +464,8 @@ export class MixEmulator {
     }
 
     private operations: Record<string, MixOpFunc> = {
-        "NOP": async (_: MixOperation) => {},
+        "NOP": async (_: MixOperation) => {
+        },
         "HLT": async (_: MixOperation) => {
             this._halt = true;
         },
@@ -841,7 +830,7 @@ export class MixEmulator {
             }
         },
         "JBUS": async (op) => {
-            const device =this._devices[op.f];
+            const device = this._devices[op.f];
             if (device) {
                 if (device.busy) this.jmp(op);
             } else if (!MixDevice.DEVICES[op.f].ready) {

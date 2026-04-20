@@ -61,31 +61,34 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                 }}
                 onMouseOut={() => {
                     mixMemoryWord.setAttr('focus', false);
+                }}
+                onClick={() => {
+                    setBreakPoints((prevState) => {
+                        if (prevState.has(addr)) {
+                            prevState.delete(addr);
+                            mix.removeBreakpoint(addr);
+                        } else {
+                            prevState.add(addr);
+                            mix.addBreakpoint(addr);
+                        }
+                        return new Set<number>(prevState);
+                    });
                 }}>
                 <TableCell className={"cell"} align={'left'}
                            sx={{paddingLeft: '4px', whiteSpace: 'pre', fontFamily: "monospace"}}>
                     {execCount.toString().padEnd(6, ' ')}
                 </TableCell>
-                <TableCell className={"cell"} align={'right'} sx={{paddingRight: '4px'}}
-                           onClick={() => {
-                               setBreakPoints((prevState) => {
-                                   if (prevState.has(addr)) {
-                                       prevState.delete(addr);
-                                       mix.removeBreakpoint(addr);
-                                   } else {
-                                       prevState.add(addr);
-                                       mix.addBreakpoint(addr);
-                                   }
-                                   return new Set<number>(prevState);
-                               });
-                           }}>
+                <TableCell className={"cell"} align={'right'} sx={{paddingRight: '4px'}}>
                     <Stack direction={"row"} sx={{borderLeft: 1, borderRight: 1, borderColor: 'divider'}}>
                         <Box sx={{
-                            display: 'grid', justifyItems: 'center', alignItems: 'center', '& *': {gridColumnStart: 1, gridRowStart: 1}
+                            display: 'grid',
+                            justifyItems: 'center',
+                            alignItems: 'center',
+                            '& *': {gridColumnStart: 1, gridRowStart: 1}
                         }}>
-                            <CircleIcon sx={{color: red[700]}} fontSize={"small"}
+                            <CircleIcon sx={{color: red[700], transform: 'scale(0.8)'}} fontSize={"small"}
                                         visibility={isBreakpoint ? 'visible' : 'hidden'}/>
-                            <ForwardIcon sx={{color: yellow[700]}} fontSize={"small"}
+                            <ForwardIcon sx={{color: yellow[700], transform: 'scale(0.9)'}} fontSize={"small"}
                                          visibility={cur ? 'visible' : 'hidden'}/>
                         </Box>
                         <Typography className={"label"} variant={"caption"}>
