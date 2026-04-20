@@ -476,9 +476,6 @@ class MIXAssembler {
                 const expr = parser.parseWValueExpr();
                 const ctx = this.context;
                 const v = expr.eval(ctx);
-                if (ctx.unresolvedReferences.length > 0) {
-
-                }
                 this.defineSymbol(loc, v!);
             } else if (op === 'ORIG') {
                 this.defineSymbol(loc, this._counter);
@@ -528,30 +525,33 @@ class MIXAssembler {
             } else if (op in MixOpCodeMap) {
                 this.defineSymbol(loc, this._counter);
                 const opcode = MixOpCodeMap[op];
-                const aExpr = parser.parseAExpr();
-                const iExpr = parser.parseIExpr();
-                const fExpr = parser.parseFExpr();
-                let ctx = this.context;
-                const a = aExpr.eval(ctx);
-                const i = iExpr.eval(ctx) || 0;
-                const f = fExpr.eval(ctx) || opcode.f;
-                const w = MixWord.fromOp(a === undefined ? -1 : a, i, f, opcode.c);
-                if (ctx.unresolvedReferences.length > 0) {
-                    this._unresolvedReferences.push({
-                        aExpr,
-                        fExpr,
-                        iExpr,
-                        op: w,
-                        counter: this._counter,
-                        undefinedSymbols: ctx.unresolvedReferences,
-                    });
-                }
-                if (aExpr.literal) {
-                    if (!a) throw new Error('Undefined A literal value.');
-                    this._literals.push({
-                        op: w,
-                        value: a
-                    })
+                let w: MixWord = MixWord.fromOp(0, 0, 0, opcode.c);
+                if (["HLT", "CHAR", "NUM", "NOP"].indexOf(opcode.name) === -1) {
+                    const aExpr = parser.parseAExpr();
+                    const iExpr = parser.parseIExpr();
+                    const fExpr = parser.parseFExpr();
+                    let ctx = this.context;
+                    const a = aExpr.eval(ctx);
+                    const i = iExpr.eval(ctx) || 0;
+                    const f = fExpr.eval(ctx) || opcode.f;
+                    w = MixWord.fromOp(a === undefined ? -1 : a, i, f, opcode.c);
+                    if (ctx.unresolvedReferences.length > 0) {
+                        this._unresolvedReferences.push({
+                            aExpr,
+                            fExpr,
+                            iExpr,
+                            op: w,
+                            counter: this._counter,
+                            undefinedSymbols: ctx.unresolvedReferences,
+                        });
+                    }
+                    if (aExpr.literal) {
+                        if (!a) throw new Error('Undefined A literal value.');
+                        this._literals.push({
+                            op: w,
+                            value: a
+                        })
+                    }
                 }
                 cur.data.push(w);
                 cur.lines.push({lineNo: this._lineNo, line: this._line, loc, op, addr});
