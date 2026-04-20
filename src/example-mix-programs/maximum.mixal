@@ -19,7 +19,10 @@ CHANGEM ENT2 0,3
      DEC3 1
      J3P LOOP
      CHAR
-     STX 0(1:4)
-     OUT 0(18)
+     STX RESULT
+     OUT PROMPT(18)
      HLT
+PROMPT  ALF MAX V
+     ALF ALUE=
+RESULT CON 0
      END START

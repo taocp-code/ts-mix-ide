@@ -3,8 +3,6 @@ import {Box, type SxProps, Tab, Tabs, type Theme} from "@mui/material";
 import PrintIcon from '@mui/icons-material/Print';
 import {yellow} from "@mui/material/colors";
 import {type MixDevice, MixDeviceType} from "../emulator/mix-io.ts";
-import {TtyIcon} from "./icons.tsx";
-import {PanelBox} from "./Common.tsx";
 
 interface MixDevicesViewProps {
     devices: MixDevice[];
@@ -38,12 +36,13 @@ interface MixDevicesByTypePanel {
 }
 
 function MixDevicesByTypePanel({deviceType, activeDeviceType, devices}: MixDevicesByTypePanel) {
-    return (<Box hidden={activeDeviceType !== deviceType} sx={{backgroundColor: yellow[50], flexGrow: 1, maxHeight: '100%'}}>
+    return (<Box hidden={activeDeviceType !== deviceType}
+                 sx={{backgroundColor: yellow[50], flexGrow: 1, maxHeight: '100%'}}>
         {devices.map((device, i) => <MixDeviceView key={i} device={device}/>)}
     </Box>);
 }
 
-export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
+export function MixDevicesView({devices}: MixDevicesViewProps) {
     const [activeDeviceType, setActiveDeviceType] = useState(MixDeviceType.PRINTER);
 
     const devicesByType = useMemo(() => {
@@ -63,7 +62,7 @@ export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
     }, [devices]);
     const deviceTypeTabs = useMemo(() => {
         return [
-            [MixDeviceType.TYPEWRITER, TtyIcon],
+            // [MixDeviceType.TYPEWRITER, TtyIcon],
             [MixDeviceType.PRINTER, <PrintIcon/>],
             //[MixDeviceType.CARD_PUNCHER, undefined],
             //[MixDeviceType.CARD_READER, undefined],
@@ -78,6 +77,9 @@ export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
                     padding: '4px 8px',
                     minHeight: 'auto',
                     minWidth: 'auto',
+                },
+                '&:hover': {
+                    backgroundColor: "lightblue"
                 }
             }} icon={icon} value={deviceType}/>
         )
@@ -95,7 +97,7 @@ export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
         })
     }, [devicesByType, activeDeviceType]);
 
-    return (<PanelBox sx={sx}>
+    return (
         <Box sx={{
             display: 'flex', flexGrow: 1,
             maxHeight: '100%',
@@ -111,6 +113,5 @@ export function MixDevicesView({devices, sx}: MixDevicesViewProps) {
                 {deviceTypeTabs}
             </Tabs>
             {deviceTypePanels}
-        </Box>
-    </PanelBox>);
+        </Box>);
 }
