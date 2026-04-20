@@ -525,7 +525,7 @@ class MIXAssembler {
             } else if (op in MixOpCodeMap) {
                 this.defineSymbol(loc, this._counter);
                 const opcode = MixOpCodeMap[op];
-                let w: MixWord = MixWord.fromOp(0, 0, 0, opcode.c);
+                let w: MixWord = MixWord.fromOp(0, 0, opcode.f, opcode.c);
                 if (["HLT", "CHAR", "NUM", "NOP"].indexOf(opcode.name) === -1) {
                     const aExpr = parser.parseAExpr();
                     const iExpr = parser.parseIExpr();

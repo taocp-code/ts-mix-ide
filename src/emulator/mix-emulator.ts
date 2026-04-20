@@ -42,12 +42,14 @@ class MixMemory implements Iterable<MixWord> {
     }
 
     at(addr: number): MixWord {
-        if (addr < 0 || addr >= MixMemory.SIZE) throw new Error(`Invalid address: ${addr}.`);
+        if (addr < 0 || addr >= MixMemory.SIZE) {
+            return MixWord.OP_HALT;
+        }
         return this.words[addr];
     }
 }
 
-export type MixOpFunc = (op: MixOperation) => void;
+export type MixOpFunc = (op: MixOperation) => Promise<void>|undefined;
 
 export interface MixState {
     pc: number;
@@ -250,15 +252,15 @@ export class MixEmulator {
         }
     }
 
-    run(emitStateChange: boolean = true, limit: number = -1) {
+    async run(emitStateChange: boolean = true, limit: number = -1) {
         while (!this._halt) {
-            this.step(emitStateChange);
+            await this.step(emitStateChange);
             if (limit !== -1 && this._instructions > limit) break;
         }
         return this.ips;
     }
 
-    step(emitStateChange: boolean = true, dt: number = 0) {
+    async step(emitStateChange: boolean = true, dt: number = 0) {
         if (this._halt) {
             this._error = 'MIX Emulator halted, reset it.';
             return;
@@ -274,7 +276,7 @@ export class MixEmulator {
         }
 
         try {
-            func(op);
+            await func(op);
         } catch (e) {
             console.error(e);
             this._error = (e as Error).message;
@@ -474,13 +476,11 @@ export class MixEmulator {
     }
 
     private operations: Record<string, MixOpFunc> = {
-        "NOP": (_: MixOperation) => {
-            // do nothing
-        },
-        "HLT": (_: MixOperation) => {
+        "NOP": async (_: MixOperation) => {},
+        "HLT": async (_: MixOperation) => {
             this._halt = true;
         },
-        "ADD": (op: MixOperation) => {
+        "ADD": async (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f).value;
             try {
@@ -494,7 +494,7 @@ export class MixEmulator {
                 }
             }
         },
-        "SUB": (op: MixOperation) => {
+        "SUB": async (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f).value;
             try {
@@ -508,7 +508,7 @@ export class MixEmulator {
                 }
             }
         },
-        "DIV": (op: MixOperation) => {
+        "DIV": async (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f);
 
@@ -529,7 +529,7 @@ export class MixEmulator {
             this._rX.abs = parseInt(r.toString());
             this._rX.sign = sign;
         },
-        "MUL": (op: MixOperation) => {
+        "MUL": async (op: MixOperation) => {
             const M = this.getM(op.i, op.a);
             const V = this._memory.load(M, op.f);
             const sign = this._rA.sign * V.sign;
@@ -539,246 +539,246 @@ export class MixEmulator {
             this._rX.abs = parseInt((p % B).toString());
             this._rX.sign = sign;
         },
-        "LDA": (op: MixOperation) => {
+        "LDA": async (op: MixOperation) => {
             this.load(op, this.rA);
         },
-        "LDAN": (op: MixOperation) => {
+        "LDAN": async (op: MixOperation) => {
             this.load(op, this.rA, true);
         },
-        "LDX": (op: MixOperation) => {
+        "LDX": async (op: MixOperation) => {
             this.load(op, this.rX);
         },
-        "LDXN": (op: MixOperation) => {
+        "LDXN": async (op: MixOperation) => {
             this.load(op, this.rX, true);
         },
-        "LD1": (op: MixOperation) => {
+        "LD1": async (op: MixOperation) => {
             this.load(op, this.rI1);
         },
-        "LD2": (op: MixOperation) => {
+        "LD2": async (op: MixOperation) => {
             this.load(op, this.rI2);
         },
-        "LD3": (op: MixOperation) => {
+        "LD3": async (op) => {
             this.load(op, this.rI3);
         },
-        "LD4": (op: MixOperation) => {
+        "LD4": async (op) => {
             this.load(op, this.rI4);
         },
-        "LD5": (op: MixOperation) => {
+        "LD5": async (op) => {
             this.load(op, this.rI5);
         },
-        "LD6": (op: MixOperation) => {
+        "LD6": async (op) => {
             this.load(op, this.rI6);
         },
-        "LD1N": (op: MixOperation) => {
+        "LD1N": async (op) => {
             this.load(op, this.rI1, true);
         },
-        "LD2N": (op: MixOperation) => {
+        "LD2N": async (op) => {
             this.load(op, this.rI2, true);
         },
-        "LD3N": (op: MixOperation) => {
+        "LD3N": async (op) => {
             this.load(op, this.rI3, true);
         },
-        "LD4N": (op: MixOperation) => {
+        "LD4N": async (op) => {
             this.load(op, this.rI4, true);
         },
-        "LD5N": (op: MixOperation) => {
+        "LD5N": async (op) => {
             this.load(op, this.rI5, true);
         },
-        "LD6N": (op: MixOperation) => {
+        "LD6N": async (op) => {
             this.load(op, this.rI6, true);
         },
-        "STA": (op: MixOperation) => {
+        "STA": async (op) => {
             this.store(op, this.rA);
         },
-        "STX": (op: MixOperation) => {
+        "STX": async (op) => {
             this.store(op, this.rX);
         },
-        "STJ": (op: MixOperation) => {
+        "STJ": async (op) => {
             this.store(op, this.rJ);
         },
-        "STZ": (op: MixOperation) => {
+        "STZ": async (op) => {
             this.store(op, MixWord.ZERO);
         },
-        "ST1": (op: MixOperation) => {
+        "ST1": async (op) => {
             this.store(op, this.rI1);
         },
-        "ST2": (op: MixOperation) => {
+        "ST2": async (op) => {
             this.store(op, this.rI2);
         },
-        "ST3": (op: MixOperation) => {
+        "ST3": async (op) => {
             this.store(op, this.rI3);
         },
-        "ST4": (op: MixOperation) => {
+        "ST4": async (op) => {
             this.store(op, this.rI4);
         },
-        "ST5": (op: MixOperation) => {
+        "ST5": async (op) => {
             this.store(op, this.rI5);
         },
-        "ST6": (op: MixOperation) => {
+        "ST6": async (op) => {
             this.store(op, this.rI6);
         },
-        "ENTA": (op: MixOperation) => {
+        "ENTA": async (op) => {
             this.ent(op, this.rA);
         },
-        "ENNA": (op: MixOperation) => {
+        "ENNA": async (op) => {
             this.ent(op, this.rA, true);
         },
-        "ENTX": (op: MixOperation) => {
+        "ENTX": async (op) => {
             this.ent(op, this.rX);
         },
-        "ENNX": (op: MixOperation) => {
+        "ENNX": async (op) => {
             this.ent(op, this.rX, true);
         },
-        "ENT1": (op: MixOperation) => {
+        "ENT1": async (op) => {
             this.ent(op, this.rI1);
         },
-        "ENT2": (op: MixOperation) => {
+        "ENT2": async (op) => {
             this.ent(op, this.rI2);
         },
-        "ENT3": (op: MixOperation) => {
+        "ENT3": async (op) => {
             this.ent(op, this.rI3);
         },
-        "ENT4": (op: MixOperation) => {
+        "ENT4": async (op) => {
             this.ent(op, this.rI4);
         },
-        "ENT5": (op: MixOperation) => {
+        "ENT5": async (op) => {
             this.ent(op, this.rI5);
         },
-        "ENT6": (op: MixOperation) => {
+        "ENT6": async (op) => {
             this.ent(op, this.rI6);
         },
-        "ENN1": (op: MixOperation) => {
+        "ENN1": async (op) => {
             this.ent(op, this.rI1, true);
         },
-        "ENN2": (op: MixOperation) => {
+        "ENN2": async (op) => {
             this.ent(op, this.rI2, true);
         },
-        "ENN3": (op: MixOperation) => {
+        "ENN3": async (op) => {
             this.ent(op, this.rI3, true);
         },
-        "ENN4": (op: MixOperation) => {
+        "ENN4": async (op) => {
             this.ent(op, this.rI4, true);
         },
-        "ENN5": (op: MixOperation) => {
+        "ENN5": async (op) => {
             this.ent(op, this.rI5, true);
         },
-        "ENN6": (op: MixOperation) => {
+        "ENN6": async (op) => {
             this.ent(op, this.rI6, true);
         },
-        "INCA": (op: MixOperation) => {
+        "INCA": async (op) => {
             this.inc(op, this.rA);
         },
-        "DECA": (op: MixOperation) => {
+        "DECA": async (op) => {
             this.inc(op, this.rA, true);
         },
-        "INCX": (op: MixOperation) => {
+        "INCX": async (op) => {
             this.inc(op, this.rX);
         },
-        "DECX": (op: MixOperation) => {
+        "DECX": async (op) => {
             this.inc(op, this.rX, true);
         },
-        "INC1": (op: MixOperation) => {
+        "INC1": async (op) => {
             this.inc(op, this.rI1);
         },
-        "DEC1": (op: MixOperation) => {
+        "DEC1": async (op) => {
             this.inc(op, this.rI1, true);
         },
-        "INC2": (op: MixOperation) => {
+        "INC2": async (op) => {
             this.inc(op, this.rI2);
         },
-        "DEC2": (op: MixOperation) => {
+        "DEC2": async (op) => {
             this.inc(op, this.rI2, true);
         },
-        "INC3": (op: MixOperation) => {
+        "INC3": async (op) => {
             this.inc(op, this.rI3);
         },
-        "DEC3": (op: MixOperation) => {
+        "DEC3": async (op) => {
             this.inc(op, this.rI3, true);
         },
-        "INC4": (op: MixOperation) => {
+        "INC4": async (op) => {
             this.inc(op, this.rI4);
         },
-        "DEC4": (op: MixOperation) => {
+        "DEC4": async (op) => {
             this.inc(op, this.rI4, true);
         },
-        "INC5": (op: MixOperation) => {
+        "INC5": async (op) => {
             this.inc(op, this.rI5);
         },
-        "DEC5": (op: MixOperation) => {
+        "DEC5": async (op) => {
             this.inc(op, this.rI5, true);
         },
-        "INC6": (op: MixOperation) => {
+        "INC6": async (op) => {
             this.inc(op, this.rI6);
         },
-        "DEC6": (op: MixOperation) => {
+        "DEC6": async (op) => {
             this.inc(op, this.rI6, true);
         },
-        "CMPA": (op: MixOperation) => {
+        "CMPA": async (op) => {
             this.cmp(op, this.rA);
         },
-        "CMPX": (op: MixOperation) => {
+        "CMPX": async (op) => {
             this.cmp(op, this.rX);
         },
-        "CMP1": (op: MixOperation) => {
+        "CMP1": async (op) => {
             this.cmp(op, this.rI1);
         },
-        "CMP2": (op: MixOperation) => {
+        "CMP2": async (op) => {
             this.cmp(op, this.rI2);
         },
-        "CMP3": (op: MixOperation) => {
+        "CMP3": async (op) => {
             this.cmp(op, this.rI3);
         },
-        "CMP4": (op: MixOperation) => {
+        "CMP4": async (op) => {
             this.cmp(op, this.rI4);
         },
-        "CMP5": (op: MixOperation) => {
+        "CMP5": async (op) => {
             this.cmp(op, this.rI5);
         },
-        "CMP6": (op: MixOperation) => {
+        "CMP6": async (op) => {
             this.cmp(op, this.rI6);
         },
-        "JMP": (op: MixOperation) => {
+        "JMP": async (op) => {
             this.jmp(op);
         },
-        "JSJ": (op: MixOperation) => {
+        "JSJ": async (op) => {
             this.jmp(op, false);
         },
-        "JOV": (op: MixOperation) => {
+        "JOV": async (op) => {
             if (this._overflow) {
                 this.jmp(op);
             }
         },
-        "JNOV": (op: MixOperation) => {
+        "JNOV": async (op) => {
             if (!this._overflow) {
                 this.jmp(op);
             }
         },
-        "JL": (op) => {
+        "JL": async (op) => {
             if (this._compare === Compare.LESS) {
                 this.jmp(op);
             }
         },
-        "JE": (op) => {
+        "JE": async (op) => {
             if (this._compare === Compare.EQUAL) {
                 this.jmp(op);
             }
         },
-        "JG": (op) => {
+        "JG": async (op) => {
             if (this._compare === Compare.GREATER) {
                 this.jmp(op);
             }
         },
-        "JGE": (op) => {
+        "JGE": async (op) => {
             if (this._compare === Compare.GREATER || this._compare === Compare.EQUAL) {
                 this.jmp(op);
             }
         },
-        "JNE": (op) => {
+        "JNE": async (op) => {
             if (this._compare !== Compare.EQUAL) {
                 this.jmp(op);
             }
         },
-        "JLE": (op) => {
+        "JLE": async (op) => {
             if (this._compare === Compare.LESS || this._compare === Compare.EQUAL) {
                 this.jmp(op);
             }
@@ -791,7 +791,7 @@ export class MixEmulator {
         ...this.jmpRegisterOps('4', this.rI4),
         ...this.jmpRegisterOps('5', this.rI5),
         ...this.jmpRegisterOps('6', this.rI6),
-        "MOVE": (op) => {
+        "MOVE": async (op) => {
             const M = this.getM(op.i, op.a);
             const dst = this.rI1.value;
             for (let i = 0; i < op.f; i++) {
@@ -800,7 +800,7 @@ export class MixEmulator {
             this.rI1.value = this.rI1.value + op.f;
         },
         // IO
-        "IOC": (op) => {
+        "IOC": async (op) => {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
@@ -809,7 +809,7 @@ export class MixEmulator {
                 MixDevice.DEVICES[op.f].ioc(M, this);
             }
         },
-        "IN": (op) => {
+        "IN": async (op) => {
             // read data from device
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
@@ -823,7 +823,7 @@ export class MixEmulator {
                 MixDevice.DEVICES[op.f].input(M, this);
             }
         },
-        "OUT": (op) => {
+        "OUT": async (op) => {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
@@ -832,7 +832,7 @@ export class MixEmulator {
                 MixDevice.DEVICES[op.f].output(M, this);
             }
         },
-        "JRED": (op) => {
+        "JRED": async (op) => {
             const device = this._devices[op.f];
             if (device) {
                 if (!device.busy) this.jmp(op);
@@ -840,7 +840,7 @@ export class MixEmulator {
                 this.jmp(op);
             }
         },
-        "JBUS": (op) => {
+        "JBUS": async (op) => {
             const device =this._devices[op.f];
             if (device) {
                 if (device.busy) this.jmp(op);
@@ -848,7 +848,7 @@ export class MixEmulator {
                 this.jmp(op);
             }
         },
-        "CHAR": (_) => {
+        "CHAR": async (_) => {
             const rA = this._rA;
             const bytes: number[] = [];
             for (let i = 1; i <= MIX_WORD_SIZE; i++) {
@@ -859,7 +859,7 @@ export class MixEmulator {
             rA.store(MixWord.fromBytes([1, ...bytes.slice(0, 5)]), _mix_field_encode(1, MIX_WORD_SIZE));
             this._rX.store(MixWord.fromBytes([1, ...bytes.slice(5)]), _mix_field_encode(1, MIX_WORD_SIZE));
         },
-        "NUM": (_) => {
+        "NUM": async (_) => {
             const rA = this._rA;
             const rX = this._rX;
             let v = 0;
@@ -873,7 +873,7 @@ export class MixEmulator {
             }
             this._rA.store(new MixWord(v), _mix_field_encode(1, MIX_WORD_SIZE));
         },
-        "SLA": (op) => {
+        "SLA": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -892,7 +892,7 @@ export class MixEmulator {
                 this._rA.store(MixWord.fromBytes(bytes));
             }
         },
-        "SRA": (op) => {
+        "SRA": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -911,7 +911,7 @@ export class MixEmulator {
                 this._rA.store(MixWord.fromBytes(bytes));
             }
         },
-        "SRAX": (op) => {
+        "SRAX": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -934,7 +934,7 @@ export class MixEmulator {
                 this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
-        "SLAX": (op) => {
+        "SLAX": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -957,7 +957,7 @@ export class MixEmulator {
                 this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
-        "SLC": (op) => {
+        "SLC": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -975,7 +975,7 @@ export class MixEmulator {
                 this._rX.store(MixWord.fromBytes([this._rX.sign, ...bytes.slice(MIX_WORD_SIZE + 1)]));
             }
         },
-        "SRC": (op) => {
+        "SRC": async (op) => {
             const M = this.getM(op.i, op.a);
             if (M < 0) {
                 this._overflow = true;
@@ -1017,7 +1017,7 @@ export class MixEmulator {
                 predicate = () => register.value !== 0;
                 break;
         }
-        return (op: MixOperation) => {
+        return async (op) => {
             if (predicate()) {
                 this.jmp(op);
             }

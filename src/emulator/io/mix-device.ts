@@ -75,10 +75,10 @@ export function createTextSource(lines: string[]): MixTextSource {
     const buffer = lines.join('');
     let i = 0;
     return async (n: number): Promise<string> => {
-        if (i + n > buffer.length){
-            throw new Error(`Buffer exhausted, not enough data, reading ${n}, available ${buffer.length - i}.`);
+        if (i >= buffer.length){
+            return ' '.repeat(n);
         }
-        const s = buffer.slice(i, i + n);
+        const s = buffer.slice(i, Math.min(i + n, buffer.length)).padEnd(n, ' ');
         i = i + n;
         return s;
     }
@@ -182,7 +182,7 @@ export abstract class AbstractMixDevice implements MixDevice {
 }
 
 function mixWordToText(data: MixWord[]) {
-    return data.map(word => decodeToMixChars(word.bytes)).join('');
+    return data.map(word => decodeToMixChars(word.bytes.slice(1))).join('');
 }
 
 export class MixPrinter extends AbstractMixDevice {

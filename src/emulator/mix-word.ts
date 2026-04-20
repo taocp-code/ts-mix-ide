@@ -1,3 +1,4 @@
+import {MixOpCodeMap} from "./mix-opcodes.ts";
 
 /**
  * Compare results.
@@ -36,12 +37,14 @@ export interface MixField {
     l: number;
     r: number;
 }
+
 export function _mix_field_decode(f: number): MixField {
     return {
         l: Math.floor(f / 8),
         r: f % 8,
     }
 }
+
 export function _mix_field_encode(l: number, r: number) {
     return l * 8 + r;
 }
@@ -56,7 +59,8 @@ export interface MixWordChangeEvent {
 
 export type MixWordChangeCallback = (e: MixWordChangeEvent) => void;
 
-export class MixWordOverflowError extends Error {}
+export class MixWordOverflowError extends Error {
+}
 
 /**
  * A MIX word, which is a 5-byte value with sign.
@@ -68,6 +72,7 @@ export class MixWordOverflowError extends Error {}
 export class MixWord implements Iterable<MixByte> {
     public static readonly ZERO = new MixWord(0);
     public static readonly MAX_VALUE = Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) - 1;
+    public static readonly OP_HALT = MixWord.fromOp(0, 0, MixOpCodeMap['HLT'].f, MixOpCodeMap['HLT'].c);
     private static emitChange: boolean = true;
     private readonly _label: string;
     // leftmost byte of the word, 1-based, could be 1 for normal words or 4 for rI* and rJ.
@@ -139,16 +144,20 @@ export class MixWord implements Iterable<MixByte> {
     get label() {
         return this._label;
     }
+
     get sign() {
         return this._bytes[0];
     }
-    get signLabel() : string {
+
+    get signLabel(): string {
         return this.sign == SIGN_POSITIVE ? '+' : '-';
     }
+
     set sign(s: number) {
         this._bytes[0] = _sign_of(s);
         this.emitChange();
     }
+
     get abs() {
         let x = 0;
         for (let i = 1; i <= MIX_WORD_SIZE; i++) {
@@ -156,24 +165,30 @@ export class MixWord implements Iterable<MixByte> {
         }
         return x;
     }
+
     set abs(v: number) {
         this._setAbsValue(v);
         this.emitChange();
     }
+
     get value() {
         return this.sign * this.abs;
     }
+
     set value(v: number) {
         this.sign = _sign_of(v);
         this._setAbsValue(v);
         this.emitChange();
     }
+
     get left() {
         return this._left;
     }
-    get bytes(): number[]{
+
+    get bytes(): number[] {
         return this._bytes;
     }
+
     get attrs(): Record<string, any> {
         return this._attrs;
     }
@@ -207,13 +222,14 @@ export class MixWord implements Iterable<MixByte> {
     load(f: number = F_ALL): MixWord {
         if (f == F_ALL) return MixWord.fromBytes(this._bytes);
         const {l, r} = _mix_field_decode(f);
-        const bytes : MixByte[] = [1, 0, 0, 0, 0, 0];
+        const bytes: MixByte[] = [1, 0, 0, 0, 0, 0];
         if (l == 0) bytes[l] = this._bytes[0];
         for (let i = Math.max(1, l); i <= r; i++) {
             bytes[MIX_WORD_SIZE - r + i] = this.getByte(i);
         }
         return MixWord.fromBytes(bytes);
     }
+
     /**
      * Store a value into the MIX word, update bytes based on the field range.
      *

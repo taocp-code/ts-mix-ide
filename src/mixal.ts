@@ -33,12 +33,12 @@ async function main() {
     console.log(`Source file: ${sourceFile}, size: ${content.length} bytes.`);
     const program = compile(content);
     const devices: Record<number, MixDevice> = {};
-    devices[16] = new CardReader(createTextSource(["A2B5E3426FGOZYW3210PQ89R."]));
+    devices[16] = new CardReader(createTextSource(["A2B5E3426FG0ZYW3210PQ89R."]));
     devices[17] = new CardPuncher(consoleTextSink);
     devices[18] = new MixPrinter(consoleTextSink, () => Promise.resolve());
     const mix = new MixEmulator(devices);
     mix.loadProgram(program);
-    const ips = mix.run();
+    const ips = await mix.run();
     console.log(`${ips} IPS`);
     console.log(`${mix.totalTime} MIX cycles`);
     console.log(mix.profile);
