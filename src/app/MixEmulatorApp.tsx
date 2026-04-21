@@ -1,53 +1,11 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {MixEmulator} from "../emulator/mix-emulator.ts";
-import {Box, Button, Container, Stack, Typography} from "@mui/material";
+import {Box, Container, Stack} from "@mui/material";
 import {type MixProgram} from "../emulator/mix-asm.ts";
 import {MixMachineView} from "./MixMachineView.tsx";
 import {MixProgramView} from "./MixProgramView.tsx";
-import {MixDevicesView} from "./MixDevicesView.tsx";
+import {MIX_DEVICES_UI_HEIGHT_CLOSED, MixDevicesView} from "./MixDevicesView.tsx";
 import {MixAsmEditor} from "./MixAsmEditor.tsx";
-import type {MixDevice} from "../emulator/mix-io.ts";
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import {PanelBox} from "./Common.tsx";
-
-const MIX_DEVICES_UI_HEIGHT_OPEN = 340;
-const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
-
-function MixDevicesDrawer({devices, devicesHeight, onStateChange}: {
-    devices: MixDevice[],
-    devicesHeight: number,
-    onStateChange: (height: number) => void
-}) {
-    const [open, setOpen] = useState(false);
-    useEffect(() => {
-        onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
-    }, [open]);
-    return (
-        <PanelBox sx={{
-            height: `${devicesHeight}px`,
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid silver'
-        }}>
-            <Box sx={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderBottom: 1,
-                borderColor: 'divider',
-            }}>
-                <Button onClick={() => {
-                    setOpen(!open);
-                }} size={"small"}>
-                    {open ? <KeyboardArrowDownIcon/> : <KeyboardArrowUpIcon/>}
-                    <Typography>I/O</Typography>
-                </Button>
-            </Box>
-            {<MixDevicesView devices={devices} sx={{flexGrow: '1', maxHeight: '100%', display: open ? 'flex' : 'none'}}/>}
-        </PanelBox>
-    );
-}
 
 export function MixEmulatorApp() {
     const mix = useMemo(() => new MixEmulator(), []);
@@ -88,8 +46,9 @@ export function MixEmulatorApp() {
                     sx={{flexGrow: 2}}
                     mix={mix} mixProgram={mixProgram}/>
             </Stack>
-            <MixDevicesDrawer devices={mix.devices} devicesHeight={devicesHeight}
-                              onStateChange={(height) => setDevicesHeight(height)}/>
+            <MixDevicesView devicesRef={mix.devices}
+                            devicesHeight={devicesHeight}
+                            onStateChange={(height) => setDevicesHeight(height)}/>
         </Container>
     )
 }

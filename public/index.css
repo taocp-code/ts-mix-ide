@@ -1,0 +1,15 @@
+@font-face {
+    font-family: DotDigital7;
+    src: url(font/dot-digital-7.regular.ttf);
+}
+
+@font-face {
+    font-family: LinePrinter;
+    src: url(font/LinePrinter.woff), url(font/LinePrinter.woff2), url(font/LinePrinter.eot), url(font/LinePrinter.ttf);
+}
+
+@font-face {
+    font-family: ElegantTypeWriter;
+    src: url('font/ELEGANT TYPEWRITER Bold.ttf'),
+    url('font/ELEGANT TYPEWRITER Italic.ttf'), url('font/ELEGANT TYPEWRITER Light.ttf'), url('font/ELEGANT TYPEWRITER Regular.ttf');
+}

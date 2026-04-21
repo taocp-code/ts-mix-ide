@@ -105,7 +105,7 @@ export function MixMachineView({mix, mixProgram, sx}: MixMachineViewProps) {
     }, []);
 
     return (<PanelBox sx={sx}>
-        {state.error && <Alert variant={"filled"} color={"error"} title={state.error}/>}
+        {state.error && <Alert variant={"filled"} color={"error"} title={state.error}>{state.error}</Alert>}
         <Box sx={{flexDirection: 'row', display: 'flex', p: 1}}>
             {<MixMachineController mix={mix} mixProgram={mixProgram}/>}
         </Box>

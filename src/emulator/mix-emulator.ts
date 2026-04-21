@@ -1,8 +1,7 @@
 import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MixProgram} from "./mix-asm.ts";
-import {MixDevice} from "./mix-io.ts";
-import {createMixMemoryWordSource, type MixDevice as IMixDevice} from './io/mix-device.ts';
+import {createMixMemoryWordSource, type MixDevice as IMixDevice, MixDeviceMode} from './io/mix-device.ts';
 import {NUMS} from "./mix-chars.ts";
 import {formatNumber} from "./utils.ts";
 
@@ -155,8 +154,8 @@ export class MixEmulator {
             program.sections.sort((a, b) => a.offset - b.offset);
             for (const section of program.sections) {
                 if (section.offset < addr) {
-                    this._error = `Possible overlapping sections. Invalid program section offset: 
-                    ${section.offset} cannot be less than cur address: ${addr}.`;
+                    this.setError(`Possible overlapping sections. Invalid program section offset: 
+                    ${section.offset} cannot be less than cur address: ${addr}.`);
                     return;
                 }
                 section.memory = [];
@@ -171,7 +170,7 @@ export class MixEmulator {
             // point program counter to program start.
             this._pc = program.start;
         } catch (e) {
-            this._error = (e as Error).message;
+            this.setError((e as Error).message);
         }
         MixWord.setEmitChange(true);
         this.emitStateChange();
@@ -255,7 +254,7 @@ export class MixEmulator {
 
     async step(emitStateChange: boolean = true, dt: number = 0) {
         if (this._halt) {
-            this._error = 'MIX Emulator halted, reset it.';
+            this.setError('MIX Emulator halted, reset it.');
             return;
         }
 
@@ -264,15 +263,14 @@ export class MixEmulator {
         const op = decode(this._memory.load(opAddr), opAddr);
         const func = this.operations[op.opcode?.name!];
         if (!func) {
-            this._error = `Unknown opcode: ${op.opcode?.name} at ${opAddr}`;
-            return;
+            this.setError(`Unknown opcode: ${op.opcode?.name} at ${opAddr}`);
         }
 
         try {
             await func(op);
         } catch (e) {
             console.error(e);
-            this._error = (e as Error).message;
+            this.setError((e as Error).message);
         }
 
         if (typeof op.opcode?.t === 'function') {
@@ -287,6 +285,13 @@ export class MixEmulator {
         this._totalRealTime += dt + (performance.now() - st) / 1000;
 
         if (emitStateChange) this.emitStateChange();
+    }
+
+    private setError(err: string | undefined) {
+        this._error = err;
+        if (this._error) {
+            this._halt = true;
+        }
     }
 
     async waitForDevices() {
@@ -377,8 +382,8 @@ export class MixEmulator {
         return this.getCurrentState();
     }
 
-    get devices(): MixDevice[] {
-        return MixDevice.DEVICES;
+    get devices(): Record<number, IMixDevice> {
+        return this._devices;
     }
 
     private getI(i: number) {
@@ -803,7 +808,7 @@ export class MixEmulator {
                 device.busy = true;
                 device.ioc(M, this.rX.value)
                     .catch(err => {
-                        console.error(`${op.addr}: IOC m=${M} failed with error ${err} on Unit ${op.f}.`);
+                        this.setError(`${op.addr}: IOC m=${M} failed with error ${err} on Unit ${op.f}.`);
                     })
                     .finally(() => {
                         device.busy = false;
@@ -811,7 +816,7 @@ export class MixEmulator {
                     });
                 return Promise.resolve();
             } else {
-                MixDevice.DEVICES[op.f].ioc(M, this);
+                this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "IN": async (op) => {
@@ -819,6 +824,11 @@ export class MixEmulator {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
+                if (device.mode === MixDeviceMode.WRITE_ONLY) {
+                    this.setError(`Device Unit ${op.f} is write only.`);
+                    this._pc = op.addr;
+                    return;
+                }
                 await device.waitUntilReady();
                 device.busy = true;
                 device.read(this.rX.value, async (data) => {
@@ -826,29 +836,34 @@ export class MixEmulator {
                         this.memory.store(M + i, data[i]);
                     }
                 }).catch(err => {
-                    this._error = `${op.addr}: IN m=${M} failed with error ${err} on Unit ${op.f}.`;
+                    this.setError(`${formatNumber(op.addr)}: IN m=${M} failed with error ${err} on Unit ${op.f}.`);
                 }).finally(() => {
                     device.busy = false;
                 });
             } else {
-                MixDevice.DEVICES[op.f].input(M, this);
+                this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "OUT": async (op) => {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
+                if (device.mode === MixDeviceMode.READ_ONLY) {
+                    this.setError(`Device Unit ${op.f} is read only.`);
+                    this._pc = op.addr;
+                    return;
+                }
                 await device.waitUntilReady();
                 device.busy = true;
                 device.write(this.rX.value, createMixMemoryWordSource(this, M))
                     .catch(err => {
-                        this._error = `${op.addr}: OUT m=${M} failed with error ${err} on Unit ${op.f}.`;
+                        this.setError(`${formatNumber(op.addr)}: OUT m=${M} failed with error ${err} on Unit ${op.f}.`);
                     })
                     .finally(() => {
                         device.busy = false;
                     });
             } else {
-                MixDevice.DEVICES[op.f].output(M, this);
+                this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "JRED": async (op) => {
@@ -856,14 +871,14 @@ export class MixEmulator {
             if (device) {
                 if (!device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
-                        // jumping to self
+                        // jumping to self, just wait
                         await device.waitUntilBusy();
                     } else {
                         this.jmp(op);
                     }
                 }
-            } else if (MixDevice.DEVICES[op.f].ready) {
-                this.jmp(op);
+            } else {
+                this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "JBUS": async (op) => {
@@ -876,8 +891,8 @@ export class MixEmulator {
                         this.jmp(op);
                     }
                 }
-            } else if (!MixDevice.DEVICES[op.f].ready) {
-                this.jmp(op);
+            } else {
+                this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "CHAR": async (_) => {

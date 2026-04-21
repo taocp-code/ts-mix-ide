@@ -8,16 +8,6 @@ import {MixDeviceType} from "./io/mix-device.ts";
 
 export type MixDeviceTypeKey = keyof typeof MixDeviceType;
 
-const MIX_DEVICES_BY_TYPE: Record<MixDeviceType, number> = {
-    TAPE: 8,
-    DISK: 8,
-    CARD_READER: 1,
-    CARD_PUNCHER: 1,
-    PRINTER: 1,
-    TYPEWRITER: 1,
-    PAPER_TAPE: 1,
-};
-
 const BLOCK_SIZE_IN_WORDS: Record<MixDeviceType, number> = {
     TAPE: 100,
     DISK: 100,
@@ -58,15 +48,6 @@ export type MixIocEventHandler = MixEventHandler<MixIocEvent>;
 export type MixInputEventHandler = MixEventHandler<MixInputEvent, MixInputResult>;
 
 export class MixDevice {
-    public static readonly DEVICES: MixDevice[] = [];
-    static {
-        for (const type in MIX_DEVICES_BY_TYPE) {
-            const c = MIX_DEVICES_BY_TYPE[type as MixDeviceTypeKey];
-            for (let j = 0; j < c; j++) {
-                MixDevice.DEVICES.push(new MixDevice(type as MixDeviceType, `${type} ${j}`));
-            }
-        }
-    }
     private _blockSize: number;
     private _type: MixDeviceType;
     private _label: string;

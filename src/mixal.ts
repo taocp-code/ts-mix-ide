@@ -33,7 +33,9 @@ async function main() {
     const content = await readAll(sourceFile);
     console.log(`Source file: ${sourceFile}, size: ${content.length} bytes.`);
     const program = compile(content);
-    const devices: Record<number, MixDevice> = {};
+    const mix = new MixEmulator();
+
+    const devices: Record<number, MixDevice> = mix.devices;
     const rl = readline.createInterface({input: process.stdin, output: process.stdout});
     devices[16] = new CardReader(createTextSource(["A2B5E3426FG0ZYW3210PQ89R."]));
     devices[17] = new CardPuncher(consoleTextSink);
@@ -46,7 +48,7 @@ async function main() {
         if (line.length < n) return line.padEnd(n, ' ');
         return line;
     });
-    const mix = new MixEmulator(devices);
+
     mix.loadProgram(program);
     const ips = await mix.run();
     console.log(`${ips} IPS`);
