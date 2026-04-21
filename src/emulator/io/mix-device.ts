@@ -68,8 +68,7 @@ export function createMixMemoryWordSource(mix: MixEmulator, offset: number): Mix
  */
 export const consoleTextSink: MixTextSink = async (text) => {
     return new Promise((resolve) => {
-        const delayMs = 50;
-        console.log(`Simulating output delay of ${delayMs}ms`);
+        const delayMs = 10;
         setTimeout(() => {
             console.log(text);
             resolve();
@@ -162,9 +161,13 @@ export abstract class AbstractMixDevice implements MixDevice {
         });
     }
 
-    protected abstract readInternal(rX: number): Promise<MixWord[]>;
+    protected readInternal(_rX: number): Promise<MixWord[]> {
+        return Promise.reject(new Error(`Read not supported on ${this.type}`));
+    }
 
-    protected abstract writeInternal(rX: number, words: MixWordSource): Promise<void>;
+    protected writeInternal(_rX: number, _words: MixWordSource): Promise<void> {
+        return Promise.reject(new Error(`Write not supported on ${this.type}`));
+    }
 
     set busy(v: boolean) {
         this._busy = v;
@@ -195,6 +198,26 @@ export abstract class AbstractMixDevice implements MixDevice {
     }
 }
 
+async function readWordsFromTextSource(textSource: MixTextSource, blockSize: number): Promise<MixWord[]> {
+    const text = await textSource(blockSize * MIX_WORD_SIZE);
+    if (text.length !== blockSize * MIX_WORD_SIZE) throw new Error(`Card reader expects ${blockSize * MIX_WORD_SIZE} characters.`);
+    const bytes = encodeToMixBytes(text);
+    const words: MixWord[] = [];
+    for (let w = 0; w < blockSize; w++) {
+        words.push(MixWord.fromBytes(bytes.slice(w * MIX_WORD_SIZE, w * MIX_WORD_SIZE + MIX_WORD_SIZE)));
+    }
+    return words;
+}
+
+async function writeWordsToTextSink(wordSource: MixWordSource, blockSize: number, textSink: MixTextSink): Promise<void> {
+    const data = await wordSource(blockSize);
+    if (data.length !== blockSize) {
+        throw new Error(`Device expects ${blockSize} words.`);
+    }
+    const line = mixWordToText(data);
+    await textSink(line);
+}
+
 function mixWordToText(data: MixWord[]) {
     return data.map(word => decodeToMixChars(word.bytes.slice(1))).join('');
 }
@@ -213,17 +236,8 @@ export class MixPrinter extends AbstractMixDevice {
         this._textSink = textSink;
     }
 
-    readInternal(): Promise<MixWord[]> {
-        return Promise.reject(new Error("Cannot read from printers."));
-    }
-
     async writeInternal(_: number, src: MixWordSource): Promise<void> {
-        const data = await src(this.blockSize);
-        if (data.length !== this.blockSize) {
-            throw new Error(`Printer expects ${this.blockSize} words.`);
-        }
-        const line = mixWordToText(data);
-        await this._textSink(line);
+        return writeWordsToTextSink(src, this.blockSize, this._textSink);
     }
 }
 
@@ -236,18 +250,7 @@ export class CardReader extends AbstractMixDevice {
     }
 
     async readInternal(): Promise<MixWord[]> {
-        const text = await this._textSource(this.blockSize * MIX_WORD_SIZE);
-        if (text.length !== this.blockSize * MIX_WORD_SIZE) throw new Error(`Card reader expects ${this.blockSize * MIX_WORD_SIZE} characters.`);
-        const bytes = encodeToMixBytes(text);
-        const words: MixWord[] = [];
-        for (let w = 0; w < this.blockSize; w++) {
-            words.push(MixWord.fromBytes(bytes.slice(w * MIX_WORD_SIZE, w * MIX_WORD_SIZE + MIX_WORD_SIZE)));
-        }
-        return words;
-    }
-
-    protected writeInternal(): Promise<void> {
-        return Promise.reject(new Error("Cannot write to Card Reader."));
+        return readWordsFromTextSource(this._textSource, this.blockSize);
     }
 }
 
@@ -260,16 +263,25 @@ export class CardPuncher extends AbstractMixDevice {
     }
 
     async writeInternal(_: number, src: MixWordSource): Promise<void> {
-        const data = await src(this.blockSize);
-        if (data.length !== this.blockSize) {
-            throw new Error(`Printer expects ${this.blockSize} words.`);
-        }
-        const line = mixWordToText(data);
-        await this._textSink(line);
-        console.log(`Card puncher write done.`)
+        await writeWordsToTextSink(src, this.blockSize, this._textSink);
+    }
+}
+
+export class TeletypeWriter extends AbstractMixDevice {
+    private readonly _textSink: MixTextSink;
+    private readonly _textSource: MixTextSource;
+
+    constructor(textSink: MixTextSink, textSource: MixTextSource) {
+        super(MixDeviceType.TYPEWRITER, 14, MixDeviceMode.READ_WRITE);
+        this._textSink = textSink;
+        this._textSource = textSource;
     }
 
-    protected readInternal(): Promise<MixWord[]> {
-        return Promise.reject(new Error("Cannot read from Card Puncher."));
+    protected async readInternal(): Promise<MixWord[]> {
+        return readWordsFromTextSource(this._textSource, this.blockSize);
+    }
+
+    protected async writeInternal(_: number, src: MixWordSource): Promise<void> {
+        return writeWordsToTextSink(src, this.blockSize, this._textSink);
     }
 }

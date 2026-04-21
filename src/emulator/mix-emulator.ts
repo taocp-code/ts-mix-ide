@@ -207,6 +207,7 @@ export class MixEmulator {
                     break;
                 }
             }
+            await this.waitForDevices();
             MixWord.setEmitChange(true);
             this._runAsyncTimer = null;
             this.emitStateChange();  // manually trigger state change after run terminates.
@@ -223,13 +224,12 @@ export class MixEmulator {
                         prev = t;
                         if (this._halt || this.shouldPause()) {
                             this._runAsyncTimer = null;
-                            this.emitStateChange();
-                            resolve(undefined);
-                            return;
+                            resolve(this.waitForDevices());
                         } else {
                             this._runAsyncTimer = setTimeout(execAsync, stepDelayMs);
                         }
-                    }).catch(reject);
+                    }).catch(reject)
+                    .finally(() => this.emitStateChange());
             };
             execAsync();
             this.emitStateChange();
@@ -249,6 +249,7 @@ export class MixEmulator {
             await this.step(emitStateChange);
             if (limit !== -1 && this._instructions > limit) break;
         }
+        await this.waitForDevices();
         return this.ips;
     }
 
@@ -286,6 +287,10 @@ export class MixEmulator {
         this._totalRealTime += dt + (performance.now() - st) / 1000;
 
         if (emitStateChange) this.emitStateChange();
+    }
+
+    async waitForDevices() {
+        return Promise.all(Object.values(this._devices).map(d => d.waitUntilReady()));
     }
 
     emitStateChange(reset: boolean = false) {
@@ -816,16 +821,13 @@ export class MixEmulator {
             if (device) {
                 await device.waitUntilReady();
                 device.busy = true;
-                let bytesRead = 0;
                 device.read(this.rX.value, async (data) => {
                     for (let i = 0; i < data.length; i++) {
                         this.memory.store(M + i, data[i]);
                     }
-                    bytesRead = data.length;
                 }).catch(err => {
-                    console.error(`${op.addr}: IN m=${M} failed with error ${err} on Unit ${op.f}.`);
+                    this._error = `${op.addr}: IN m=${M} failed with error ${err} on Unit ${op.f}.`;
                 }).finally(() => {
-                    console.log(`${op.addr}: IN m=${M} finished on Unit ${op.f}, bytes read: ${bytesRead}.`);
                     device.busy = false;
                 });
             } else {
@@ -840,10 +842,9 @@ export class MixEmulator {
                 device.busy = true;
                 device.write(this.rX.value, createMixMemoryWordSource(this, M))
                     .catch(err => {
-                        console.error(`${op.addr}: OUT m=${M} failed with error ${err} on Unit ${op.f}.`);
+                        this._error = `${op.addr}: OUT m=${M} failed with error ${err} on Unit ${op.f}.`;
                     })
                     .finally(() => {
-                        console.error(`${op.addr}: OUT m=${M} finished on Unit ${op.f}.`);
                         device.busy = false;
                     });
             } else {
@@ -856,7 +857,6 @@ export class MixEmulator {
                 if (!device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
                         // jumping to self
-                        console.log(`${op.addr}: Device ${op.f} ready loop on ${op.addr}, waiting for device to be busy.`)
                         await device.waitUntilBusy();
                     } else {
                         this.jmp(op);
@@ -871,7 +871,6 @@ export class MixEmulator {
             if (device) {
                 if (device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
-                        console.log(`${op.addr}: Device ${op.f} busy loop on ${op.addr}, waiting for device to be ready.`)
                         await device.waitUntilReady();
                     } else {
                         this.jmp(op);
