@@ -13,18 +13,21 @@ export interface MixOperation {
     // Address value, sign and bytes 1-3
     a: MixWord;
     opcode?: MixOpCode;
+    addr: number;
 }
 
 /**
  * Decode a MIX word into a MIX operation.
  * @param word
+ * @param addr
  */
-export function decode(word: MixWord): MixOperation {
+export function decode(word: MixWord, addr: number): MixOperation {
     const op: MixOperation = {
         c: word.load(F_OP_CODE).value,
         f: word.load(F_OP_F).value,
         i: word.load(F_OP_I).value,
         a: word.load(F_OP_ADDR),
+        addr: addr,
     }
     op.opcode = getOpCode(op.c, op.f);
     if (!op.opcode) throw new Error(`Unknown MIX Operation ${op.c} ${op.f} ${op.i} ${op.a.value}`);

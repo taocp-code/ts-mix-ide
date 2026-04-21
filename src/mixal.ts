@@ -41,7 +41,7 @@ async function main() {
     const ips = await mix.run();
     console.log(`${ips} IPS`);
     console.log(`${mix.totalTime} MIX cycles`);
-    console.log(mix.profile);
+    console.log(`${mix.state.instructions} INS`);
 }
 
 try {

@@ -1,5 +1,5 @@
 import {MIX_WORD_SIZE, MixWord} from "../mix-word.ts";
-import {MixEmulator} from "../mix-emulator.ts";
+import {MixEmulator, MixMemory} from "../mix-emulator.ts";
 import {decodeToMixChars, encodeToMixBytes} from "../mix-chars.ts";
 
 export enum MixDeviceType {
@@ -49,7 +49,11 @@ export function createMixMemoryWordSource(mix: MixEmulator, offset: number): Mix
             const memory = mix.memory;
             const words: MixWord[] = [];
             for (let i = 0; i < n; i++) {
-                words.push(memory.load(offset + i));
+                if (offset + i >= MixMemory.SIZE) {
+                    return Promise.reject(new Error(`Reading invalid addr ${offset + i}.`));
+                } else {
+                    words.push(memory.load(offset + i));
+                }
             }
             return Promise.resolve(words);
         } catch (err) {
@@ -62,9 +66,15 @@ export function createMixMemoryWordSource(mix: MixEmulator, offset: number): Mix
  * Simple text sink that prints to console.
  * @param text
  */
-export const consoleTextSink: MixTextSink = (text) => {
-    console.log(text);
-    return Promise.resolve();
+export const consoleTextSink: MixTextSink = async (text) => {
+    return new Promise((resolve) => {
+        const delayMs = 50;
+        console.log(`Simulating output delay of ${delayMs}ms`);
+        setTimeout(() => {
+            console.log(text);
+            resolve();
+        }, delayMs);
+    });
 };
 
 /**
@@ -75,7 +85,7 @@ export function createTextSource(lines: string[]): MixTextSource {
     const buffer = lines.join('');
     let i = 0;
     return async (n: number): Promise<string> => {
-        if (i >= buffer.length){
+        if (i >= buffer.length) {
             return ' '.repeat(n);
         }
         const s = buffer.slice(i, Math.min(i + n, buffer.length)).padEnd(n, ' ');
@@ -92,17 +102,11 @@ export interface MixDevice {
     blockSize: number;
     busy: boolean;
     mode: MixDeviceMode;
+    waitUntilReady: (waitMs?: number) => Promise<void>;
+    waitUntilBusy: (waitMs?: number) => Promise<void>;
     ioc: (m: number, rX: number) => Promise<void>;
-    read: (rX: number) => Promise<MixWord[]>;
+    read: (rX: number, sink: MixWordSink) => Promise<void>;
     write: (rX: number, words: MixWordSource) => Promise<void>;
-}
-
-export async function sleep(millis: number) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(undefined);
-        }, millis);
-    });
 }
 
 export abstract class AbstractMixDevice implements MixDevice {
@@ -120,35 +124,49 @@ export abstract class AbstractMixDevice implements MixDevice {
         this._busy = false;
     }
 
-    async read(rX: number): Promise<MixWord[]> {
+    async read(rX: number, sink: MixWordSink): Promise<void> {
         if (!this.canRead) {
             return Promise.reject(new Error(`Device ${this.type} doesn't support read operation.`));
         }
-        await this.waitWhileBusy();
-        this.busy = true;
-        return this.readInternal(rX).finally(() => this.busy = false);
+        const words = await this.readInternal(rX);
+        await sink(words);
     }
 
     async write(rX: number, words: MixWordSource): Promise<void> {
         if (!this.canWrite) {
             return Promise.reject(new Error(`Device ${this.type} doesn't support write operation.`));
         }
-        await this.waitWhileBusy();
-        this.busy = true;
-        return this.writeInternal(rX, words).finally(() => this.busy = false);
+        await this.writeInternal(rX, words);
     }
 
     async ioc(m: number, rX: number): Promise<void> {
-        await this.waitWhileBusy();
-        this.busy = true;
-        return this._iocHandler(m, rX).finally(() => this.busy = false);
+        await this._iocHandler(m, rX);
+    }
+
+    async waitUntilReady(waitMs: number = 5): Promise<void> {
+        return this.waitBusyFlag(false, waitMs)
+    }
+
+    async waitUntilBusy(waitMs: number = 5): Promise<void> {
+        return this.waitBusyFlag(true, waitMs);
+    }
+
+    protected async waitBusyFlag(target: boolean, waitMs: number): Promise<void> {
+        if (this._busy === target) {
+            return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve(this.waitBusyFlag(target, waitMs));
+            }, waitMs);
+        });
     }
 
     protected abstract readInternal(rX: number): Promise<MixWord[]>;
 
     protected abstract writeInternal(rX: number, words: MixWordSource): Promise<void>;
 
-    protected set busy(v: boolean) {
+    set busy(v: boolean) {
         this._busy = v;
     }
 
@@ -174,10 +192,6 @@ export abstract class AbstractMixDevice implements MixDevice {
 
     get canWrite(): boolean {
         return this.mode !== MixDeviceMode.READ_ONLY;
-    }
-
-    private async waitWhileBusy() {
-        while (this.busy) await sleep(5);
     }
 }
 
@@ -252,6 +266,7 @@ export class CardPuncher extends AbstractMixDevice {
         }
         const line = mixWordToText(data);
         await this._textSink(line);
+        console.log(`Card puncher write done.`)
     }
 
     protected readInternal(): Promise<MixWord[]> {

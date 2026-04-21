@@ -10,7 +10,7 @@ import {formatNumber} from "./utils.ts";
 /**
  * MIX memory: an array of 4000 MIX words.
  */
-class MixMemory implements Iterable<MixWord> {
+export class MixMemory implements Iterable<MixWord> {
     [Symbol.iterator](): Iterator<MixWord> {
         let index = 0;
         const self = this;
@@ -260,7 +260,7 @@ export class MixEmulator {
 
         const st = performance.now();
         const opAddr = this._pc++;
-        const op = decode(this._memory.load(opAddr));
+        const op = decode(this._memory.load(opAddr), opAddr);
         const func = this.operations[op.opcode?.name!];
         if (!func) {
             this._error = `Unknown opcode: ${op.opcode?.name} at ${opAddr}`;
@@ -793,7 +793,18 @@ export class MixEmulator {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
-                return device.ioc(M, this.rX.value);
+                await device.waitUntilReady();
+                // Don't wait for the IO operation to finish.
+                device.busy = true;
+                device.ioc(M, this.rX.value)
+                    .catch(err => {
+                        console.error(`${op.addr}: IOC m=${M} failed with error ${err} on Unit ${op.f}.`);
+                    })
+                    .finally(() => {
+                        device.busy = false;
+                        console.log(`${op.addr}: IOC m=${M} finished on Unit ${op.f}`);
+                    });
+                return Promise.resolve();
             } else {
                 MixDevice.DEVICES[op.f].ioc(M, this);
             }
@@ -803,10 +814,19 @@ export class MixEmulator {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
-                return device.read(this.rX.value).then(data => {
+                await device.waitUntilReady();
+                device.busy = true;
+                let bytesRead = 0;
+                device.read(this.rX.value, async (data) => {
                     for (let i = 0; i < data.length; i++) {
                         this.memory.store(M + i, data[i]);
                     }
+                    bytesRead = data.length;
+                }).catch(err => {
+                    console.error(`${op.addr}: IN m=${M} failed with error ${err} on Unit ${op.f}.`);
+                }).finally(() => {
+                    console.log(`${op.addr}: IN m=${M} finished on Unit ${op.f}, bytes read: ${bytesRead}.`);
+                    device.busy = false;
                 });
             } else {
                 MixDevice.DEVICES[op.f].input(M, this);
@@ -816,7 +836,16 @@ export class MixEmulator {
             const M = this.getM(op.i, op.a);
             const device = this._devices[op.f];
             if (device) {
-                return device.write(this.rX.value, createMixMemoryWordSource(this, M));
+                await device.waitUntilReady();
+                device.busy = true;
+                device.write(this.rX.value, createMixMemoryWordSource(this, M))
+                    .catch(err => {
+                        console.error(`${op.addr}: OUT m=${M} failed with error ${err} on Unit ${op.f}.`);
+                    })
+                    .finally(() => {
+                        console.error(`${op.addr}: OUT m=${M} finished on Unit ${op.f}.`);
+                        device.busy = false;
+                    });
             } else {
                 MixDevice.DEVICES[op.f].output(M, this);
             }
@@ -824,7 +853,15 @@ export class MixEmulator {
         "JRED": async (op) => {
             const device = this._devices[op.f];
             if (device) {
-                if (!device.busy) this.jmp(op);
+                if (!device.busy) {
+                    if (this.getM(op.i, op.a) === op.addr) {
+                        // jumping to self
+                        console.log(`${op.addr}: Device ${op.f} ready loop on ${op.addr}, waiting for device to be busy.`)
+                        await device.waitUntilBusy();
+                    } else {
+                        this.jmp(op);
+                    }
+                }
             } else if (MixDevice.DEVICES[op.f].ready) {
                 this.jmp(op);
             }
@@ -832,7 +869,14 @@ export class MixEmulator {
         "JBUS": async (op) => {
             const device = this._devices[op.f];
             if (device) {
-                if (device.busy) this.jmp(op);
+                if (device.busy) {
+                    if (this.getM(op.i, op.a) === op.addr) {
+                        console.log(`${op.addr}: Device ${op.f} busy loop on ${op.addr}, waiting for device to be ready.`)
+                        await device.waitUntilReady();
+                    } else {
+                        this.jmp(op);
+                    }
+                }
             } else if (!MixDevice.DEVICES[op.f].ready) {
                 this.jmp(op);
             }
