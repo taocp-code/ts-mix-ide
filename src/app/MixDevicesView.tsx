@@ -130,7 +130,6 @@ export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDe
         return devicesRef;
     }, []);
     const [open, setOpen] = useState(false);
-    console.log('text output: ', textOutput);
     useEffect(() => {
         onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
     }, [open]);
@@ -187,7 +186,7 @@ export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDe
                                 flexDirection: 'column',
                                 padding: '4em 2em'
                             }}>
-                                {textOutput[i]?.map((line, no) => {
+                                {textOutput[i]?.map((line) => {
                                     return <Box sx={{whiteSpace: "pre", fontFamily: fontFamily}}>{line}</Box>;
                                 })}
                             </Paper>
