@@ -1,8 +1,8 @@
-import {MixEmulator, type MixState} from "../emulator/mix-emulator.ts";
+import {MixEmulator, type MixState} from "../../emulator/mix-emulator.ts";
 import React, {useEffect, useState} from "react";
 import {Box, Typography} from "@mui/material";
-import {MonospacedBox} from "./Common.tsx";
-import {formatBoolean, formatNumber} from "../emulator/utils.ts";
+import {MonospacedBox} from "../common/Common.tsx";
+import {formatBoolean, formatNumber} from "../../emulator/utils.ts";
 
 export function MixStateView({mix}: { mix: MixEmulator }) {
     const [state, setState] = useState<MixState>(mix.state);

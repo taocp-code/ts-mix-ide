@@ -1,12 +1,12 @@
 import {EditorView, keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
-import {compile, type MixProgram} from "../emulator/mix-asm.ts";
-import {MixEmulator} from "../emulator/mix-emulator.ts";
+import {compile, type MixProgram} from "../../emulator/mix-asm.ts";
+import {MixEmulator} from "../../emulator/mix-emulator.ts";
 import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme} from "@mui/material";
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import tableOfPrimes from "../example-mix-programs/table-of-primes.mixal?raw";
-import {ExampleMixPrograms} from "../example-mix-programs";
-import {PanelBox} from "./Common.tsx";
+import tableOfPrimes from "../../example-mix-programs/table-of-primes.mixal?raw";
+import {ExampleMixPrograms} from "../../example-mix-programs";
+import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
 
 interface EditorFileMenuProps {

@@ -1,7 +1,7 @@
-import type {MixProgram, MixSection} from "../emulator/mix-asm.ts";
-import {MixEmulator} from "../emulator/mix-emulator.ts";
+import type {MixProgram, MixSection} from "../../emulator/mix-asm.ts";
+import {MixEmulator} from "../../emulator/mix-emulator.ts";
 import React, {useEffect, useMemo, useState} from "react";
-import {formatNumber} from "../emulator/utils.ts";
+import {formatNumber} from "../../emulator/utils.ts";
 import {
     Box,
     Stack,
@@ -16,8 +16,8 @@ import {
     Typography
 } from "@mui/material";
 import {lightBlue, red, yellow} from "@mui/material/colors";
-import {MixWordValue} from "./MixWord.tsx";
-import {PanelBox} from "./Common.tsx";
+import {MixWordValue} from "../common/MixWord.tsx";
+import {PanelBox} from "../common/Common.tsx";
 import ForwardIcon from '@mui/icons-material/Forward';
 import CircleIcon from '@mui/icons-material/Circle';
 

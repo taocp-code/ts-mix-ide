@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
-import {MixEmulator} from "../emulator/mix-emulator.ts";
-import {type MixProgram} from "../emulator/mix-asm.ts";
+import {MixEmulator} from "../../emulator/mix-emulator.ts";
+import {type MixProgram} from "../../emulator/mix-asm.ts";
 import {Alert, Box, Chip, Divider, IconButton, Stack, type SxProps, type Theme, Tooltip} from '@mui/material';
 import RedoIcon from "@mui/icons-material/Redo";
 import FastForwardIcon from "@mui/icons-material/FastForward";
@@ -8,8 +8,8 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import {MixStateView} from "./MixStateView.tsx";
-import {PanelBox} from "./Common.tsx";
-import {MixWordView} from "./MixWord.tsx";
+import {PanelBox} from "../common/Common.tsx";
+import {MixWordView} from "../common/MixWord.tsx";
 import {MixMemoryView} from "./MixMemoryView.tsx";
 
 interface MixMachineControllerProps {

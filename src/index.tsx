@@ -1,6 +1,6 @@
 import React from "react";
 import {createRoot} from "react-dom/client";
-import {MixEmulatorApp} from "./MixEmulatorApp.tsx";
+import {MixEmulatorApp} from "./app/MixEmulatorApp.tsx";
 import {CssBaseline} from "@mui/material";
 
 const root = createRoot(

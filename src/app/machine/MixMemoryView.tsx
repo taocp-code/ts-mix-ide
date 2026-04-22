@@ -1,6 +1,6 @@
-import {MixEmulator} from "../emulator/mix-emulator.ts";
+import {MixEmulator} from "../../emulator/mix-emulator.ts";
 import React, {useMemo} from "react";
-import {MixWordView} from "./MixWord.tsx";
+import {MixWordView} from "../common/MixWord.tsx";
 import {Box} from "@mui/material";
 
 export function MixMemoryView({mix}: { mix: MixEmulator }) {

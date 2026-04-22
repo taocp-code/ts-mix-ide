@@ -2,10 +2,10 @@ import React, {useEffect, useMemo, useState} from "react";
 import {MixEmulator} from "../emulator/mix-emulator.ts";
 import {Box, Container, Stack} from "@mui/material";
 import {type MixProgram} from "../emulator/mix-asm.ts";
-import {MixMachineView} from "./MixMachineView.tsx";
-import {MixProgramView} from "./MixProgramView.tsx";
-import {MIX_DEVICES_UI_HEIGHT_CLOSED, MixDevicesView} from "./MixDevicesView.tsx";
-import {MixAsmEditor} from "./MixAsmEditor.tsx";
+import {MixMachineView} from "./machine/MixMachineView.tsx";
+import {MixProgramView} from "./editor/MixProgramView.tsx";
+import {MIX_DEVICES_UI_HEIGHT_CLOSED, MixDevicesView} from "./io/MixDevicesView.tsx";
+import {MixAsmEditor} from "./editor/MixAsmEditor.tsx";
 
 export function MixEmulatorApp() {
     const mix = useMemo(() => new MixEmulator(), []);

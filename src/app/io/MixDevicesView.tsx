@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Box, Button, Paper, Tab, Tabs, TextField} from "@mui/material";
 import {
     CardPuncher,
@@ -7,13 +7,13 @@ import {
     MixDeviceType,
     MixPrinter,
     TeletypeWriter
-} from "../emulator/io/mix-device.ts";
-import {PanelBox} from "./Common.tsx";
+} from "../../emulator/io/mix-device.ts";
+import {PanelBox} from "../common/Common.tsx";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import {formatNumber} from "../emulator/utils.ts";
+import {formatNumber} from "../../emulator/utils.ts";
 
-export const MIX_DEVICES_UI_HEIGHT_OPEN = 340;
+export const MIX_DEVICES_UI_HEIGHT_OPEN = 600;
 export const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
 
 interface MixDevicesViewProps {
@@ -25,21 +25,38 @@ interface MixDevicesViewProps {
 type Resolve<T> = (v: T | PromiseLike<T>) => void;
 
 export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDevicesViewProps) {
+    const [open, setOpen] = useState(false);
+    useEffect(() => {
+        onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
+    }, [open]);
     const [activeDeviceId, setActiveDeviceId] = useState("18");
     const [, setTextInput] = useState<Record<number, Resolve<string>>>({});
     const [textOutput, setTextOutput] = useState<Record<number, string[]>>({});
-    const appendText = (i: number, text: string) => {
+    const appendText = useCallback((i: number, text: string) => {
+        if (!open) {
+            setOpen(true);
+        }
+        if (activeDeviceId !== i.toString()) {
+            setActiveDeviceId(i.toString());
+        }
         setTextOutput(buffers => {
             buffers[i].push(text);
             return {...buffers};
         })
-    };
-    const clearText = (i: number) => {
+    }, [open, activeDeviceId]);
+    const clearText = useCallback((i: number) => {
+        if (!open) {
+            setOpen(true);
+        }
+
+        if (activeDeviceId !== i.toString()) {
+            setActiveDeviceId(i.toString());
+        }
         setTextOutput(buffers => {
             buffers[i] = [];
             return {...buffers};
         })
-    };
+    }, [open, activeDeviceId]);
     const startTextInput = async (i: number): Promise<string> => {
         return new Promise(resolve => {
             setTextInput(promises => {
@@ -129,10 +146,6 @@ export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDe
         }));
         return devicesRef;
     }, []);
-    const [open, setOpen] = useState(false);
-    useEffect(() => {
-        onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
-    }, [open]);
     return (
         <PanelBox sx={{
             height: `${devicesHeight}px`,
@@ -160,7 +173,10 @@ export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDe
                     }
                 }}>
                     {Object.keys(devices).map(id => {
-                        return (<Tab key={id} value={id} onClick={() => setActiveDeviceId(id)}
+                        return (<Tab key={id} value={id} onClick={() => {
+                            setActiveDeviceId(id);
+                            if (!open) setOpen(true);
+                        }}
                                      label={`${id} - ` + devices[parseInt(id)].type.replaceAll('_', ' ')}/>);
                     })}
                 </Tabs>
