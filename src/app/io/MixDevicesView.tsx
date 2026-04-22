@@ -1,151 +1,186 @@
-import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {Box, Button, Paper, Tab, Tabs, TextField} from "@mui/material";
+import React, {useEffect, useMemo, useState} from "react";
+import {Box, Button, Tab, Tabs} from "@mui/material";
 import {
+    CARD_PUNCHER,
+    CARD_READER,
     CardPuncher,
     CardReader,
-    type MixDevice,
-    MixDeviceType,
-    MixPrinter,
-    TeletypeWriter
+    DISK,
+    type IocHandler,
+    LinePrinter,
+    MIX_DEVICE_TYPES,
+    MixDeviceConfigs,
+    MixDeviceRegistry,
+    type MixDeviceType,
+    type MixTextSink,
+    type MixTextSource,
+    type MixWordSink,
+    type MixWordSource,
+    PAPER_TAPE,
+    PRINTER,
+    TAPE,
+    TeletypeWriter,
+    TYPE_WRITER
 } from "../../emulator/io/mix-device.ts";
 import {PanelBox} from "../common/Common.tsx";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import {formatNumber} from "../../emulator/utils.ts";
+import type {MixWord} from "../../emulator/mix-word.ts";
+import {MixLinePrinter} from "./MixLinePrinter.tsx";
+import {MixCardReader} from "./MixCardReader.tsx";
+import {MixCardPuncher} from "./MixCardPuncher.tsx";
 
 export const MIX_DEVICES_UI_HEIGHT_OPEN = 600;
 export const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
 
 interface MixDevicesViewProps {
-    devicesRef: Record<number, MixDevice>,
+    mixDeviceRegistry: MixDeviceRegistry,
     devicesHeight: number,
     onStateChange: (height: number) => void
 }
 
-type Resolve<T> = (v: T | PromiseLike<T>) => void;
+export interface MixCommonDeviceViewProps {
+    connection: MixDeviceConnection;
+}
 
-export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDevicesViewProps) {
+export interface MixDeviceActivityEvent {
+    deviceId: number;
+    userInput: boolean;
+}
+
+export type MixDeviceActivityHandler = (e: MixDeviceActivityEvent) => void;
+
+export class MixDeviceConnection {
+    deviceId: number = -1;
+    type: MixDeviceType;
+
+    private _textSink?: MixTextSink;
+    private _textSource?: MixTextSource;
+    private _wordSource?: MixWordSource;
+    private _wordSink?: MixWordSink;
+    private _iocHandler?: IocHandler;
+
+    private _onActivity?: MixDeviceActivityHandler;
+
+    private fireActivity(userInput: boolean) {
+        if (this._onActivity) this._onActivity({deviceId: this.deviceId, userInput});
+    }
+
+    constructor(type: MixDeviceType) {
+        this.type = type;
+    }
+
+    async textSource(n: number): Promise<string> {
+        this.fireActivity(true);
+        if (this._textSource) return this._textSource(n);
+        return " ".repeat(n);
+    }
+
+    async textSink(text: string): Promise<void> {
+        this.fireActivity(false);
+        if (this._textSink) this._textSink(text);
+    }
+
+    async wordSource(n: number): Promise<MixWord[]> {
+        this.fireActivity(true);
+        if (this._wordSource) return this._wordSource(n);
+        return [];
+    }
+
+    async wordSink(words: MixWord[]): Promise<void> {
+        this.fireActivity(false);
+        if (this._wordSink) return this._wordSink(words);
+    }
+
+    async iocHandler(m: number, rX: number): Promise<void> {
+        this.fireActivity(false);
+        if (this._iocHandler) this._iocHandler(m, rX);
+    }
+
+    setTextSource(textSource: MixTextSource) {
+        this._textSource = textSource;
+    }
+
+    setTextSink(textSink: MixTextSink) {
+        this._textSink = textSink;
+    }
+
+    setIocHandler(iocHandler: IocHandler) {
+        this._iocHandler = iocHandler;
+    }
+
+    setOnActivity(onActivity: MixDeviceActivityHandler) {
+        this._onActivity = onActivity;
+    }
+}
+
+export function MixDevicesView({mixDeviceRegistry, devicesHeight, onStateChange}: MixDevicesViewProps) {
     const [open, setOpen] = useState(false);
     useEffect(() => {
         onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
     }, [open]);
     const [activeDeviceId, setActiveDeviceId] = useState("18");
-    const [, setTextInput] = useState<Record<number, Resolve<string>>>({});
-    const [textOutput, setTextOutput] = useState<Record<number, string[]>>({});
-    const appendText = useCallback((i: number, text: string) => {
-        if (!open) {
-            setOpen(true);
-        }
-        if (activeDeviceId !== i.toString()) {
-            setActiveDeviceId(i.toString());
-        }
-        setTextOutput(buffers => {
-            buffers[i].push(text);
-            return {...buffers};
-        })
-    }, [open, activeDeviceId]);
-    const clearText = useCallback((i: number) => {
-        if (!open) {
-            setOpen(true);
-        }
-
-        if (activeDeviceId !== i.toString()) {
-            setActiveDeviceId(i.toString());
-        }
-        setTextOutput(buffers => {
-            buffers[i] = [];
-            return {...buffers};
-        })
-    }, [open, activeDeviceId]);
-    const startTextInput = async (i: number): Promise<string> => {
-        return new Promise(resolve => {
-            setTextInput(promises => {
-                promises[i] = (t) => resolve(t);
-                return {...promises};
-            });
-        });
+    const onDeviceViewActivity = (e: MixDeviceActivityEvent) => {
+        if (!open) setOpen(true);
+        setActiveDeviceId(e.deviceId.toString());
     };
-    const completeTextInput = (i: number, text: string) => {
-        setTextInput(promises => {
-            promises[i](text);
-            delete promises[i];
-            return {...promises};
-        });
-    }
-    const browserPromptTextSource = (i: number) => {
-        return async (n: number): Promise<string> => {
-            const promise = startTextInput(i);
-            setTimeout(() => {
-                let text = '';
-                while (true) {
-                    const line = prompt(`Input at most ${n} characters:`);
-                    if (line !== null) {
-                        if (line.length === n) {
-                            text = line.toUpperCase();
-                        } else if (line.length < n) {
-                            text = line.padEnd(n, ' ').toUpperCase();
-                        } else {
-                            text = line.toUpperCase();
-                        }
+
+    const devices = useMemo<MixDeviceConnection[]>(() => {
+        const conns: MixDeviceConnection[] = [];
+        for (const type of MIX_DEVICE_TYPES) {
+            const {idStart, idEnd} = MixDeviceConfigs[type];
+            const count = idEnd - idStart + 1;
+
+            for (let i = 0; i < count; i++) {
+                const conn = new MixDeviceConnection(type);
+                switch (type) {
+                    case DISK:
                         break;
-                    }
+                    case TAPE:
+                        break;
+                    case CARD_PUNCHER:
+                        conn.deviceId = mixDeviceRegistry.register(new CardPuncher(conn.textSink.bind(conn)));
+                        break;
+                    case CARD_READER:
+                        conn.deviceId = mixDeviceRegistry.register(new CardReader(conn.textSource.bind(conn)));
+                        break;
+                    case PRINTER:
+                        conn.deviceId = mixDeviceRegistry.register(new LinePrinter(conn.textSink.bind(conn), conn.iocHandler.bind(conn)));
+                        break;
+                    case PAPER_TAPE:
+                        break;
+                    case TYPE_WRITER:
+                        conn.deviceId = mixDeviceRegistry.register(new TeletypeWriter(conn.textSink.bind(conn), conn.textSource.bind(conn)));
+                        break;
                 }
-                completeTextInput(i, text);
-            });
-            return promise;
-        }
-    }
-    const devices = useMemo(() => {
-        console.log(`Initializing devices.`, devicesRef);
-        const textOutputBuffers: Record<number, string[]> = {};
-        for (let i = 0; i <= 20; i++) {
-            if (i <= 7) {
-                console.log(`No tape device found, ignoring unit number: ${i}.`);
-            } else if (i <= 15) {
-                console.log(`No disk device found, ignoring unit number: ${i}.`)
-            } else {
-                textOutputBuffers[i] = [];
-                switch (i) {
-                    case 16:
-                        devicesRef[i] = new CardReader(browserPromptTextSource(i));
-                        break;
-                    case 17:
-                        devicesRef[i] = new CardPuncher((text: string) => new Promise(resolve => {
-                            console.log(`Card Puncher| output: "${text}".`);
-                            appendText(i, text);
-                            resolve();
-                        }));
-                        break;
-                    case 18:
-                        devicesRef[i] = new MixPrinter((text: string) => new Promise(resolve => {
-                            console.log(`Printer| output: "${text}".`);
-                            appendText(i, text);
-                            resolve();
-                        }), () => new Promise(resolve => {
-                            console.log(`Printer| IOC: new page.`);
-                            clearText(i);
-                            resolve();
-                        }));
-                        break;
-                    case 19:
-                        devicesRef[i] = new TeletypeWriter(
-                            (text: string) => new Promise(resolve => {
-                                console.log(`TeletypeWriter| output: "${text}".`);
-                                appendText(i, text);
-                                resolve();
-                            }),
-                            browserPromptTextSource(i),
-                        );
-                        break;
+                if (conn.deviceId !== -1) {
+                    conn.setOnActivity(onDeviceViewActivity);
+                    conns.push(conn);
                 }
             }
         }
-        setTextOutput(prev => ({
-            ...prev,
-            ...textOutputBuffers
-        }));
-        return devicesRef;
+        return conns;
     }, []);
+
+
+    const deviceViews: Map<string, React.JSX.Element> = useMemo(() => {
+        const views = new Map<string, React.JSX.Element>();
+        devices.forEach((conn) => {
+            switch (conn.type) {
+                case PRINTER:
+                    views.set(conn.deviceId.toString(), <MixLinePrinter connection={conn}/>);
+                    break;
+                case CARD_READER:
+                    views.set(conn.deviceId.toString(), <MixCardReader connection={conn}/>);
+                    break;
+                case CARD_PUNCHER:
+                    views.set(conn.deviceId.toString(), <MixCardPuncher connection={conn}/>);
+                    break;
+            }
+        })
+        return views;
+    }, [devices]);
+
     return (
         <PanelBox sx={{
             height: `${devicesHeight}px`,
@@ -172,84 +207,21 @@ export function MixDevicesView({devicesRef, devicesHeight, onStateChange}: MixDe
                         padding: '0px 8px',
                     }
                 }}>
-                    {Object.keys(devices).map(id => {
-                        return (<Tab key={id} value={id} onClick={() => {
-                            setActiveDeviceId(id);
+                    {devices.map(({deviceId, type}) => {
+                        return (<Tab key={deviceId} value={deviceId.toString()} onClick={() => {
+                            setActiveDeviceId(deviceId.toString());
                             if (!open) setOpen(true);
-                        }}
-                                     label={`${id} - ` + devices[parseInt(id)].type.replaceAll('_', ' ')}/>);
+                        }} label={`${deviceId} - ` + type.replaceAll('_', ' ')}/>);
                     })}
                 </Tabs>
             </Box>
-            <Box sx={{flexGrow: 1, overflowY: 'scroll'}}>
-                {Object.keys(devices).map(id => {
-                    if (activeDeviceId !== id) return <></>;
-                    const i = parseInt(id);
-                    const dev = devices[i];
-                    switch (dev.type) {
-                        case MixDeviceType.PRINTER: {
-                            const fontFamily = 'LinePrinter';
-                            return <Paper key={id} elevation={3} sx={{
-                                maxWidth: '60%',
-                                minWidth: '210mm',
-                                minHeight: '297mm',
-                                marginLeft: 'auto',
-                                marginRight: 'auto',
-                                marginTop: 2,
-                                marginBottom: 2,
-                                display: 'flex',
-                                justifyItems: 'center',
-                                flexDirection: 'column',
-                                padding: '4em 2em'
-                            }}>
-                                {textOutput[i]?.map((line) => {
-                                    return <Box sx={{whiteSpace: "pre", fontFamily: fontFamily}}>{line}</Box>;
-                                })}
-                            </Paper>
-                        }
-                        case MixDeviceType.TYPEWRITER: {
-                            const fontFamily = "ElegantTypeWriter";
-                            return <Paper key={id} elevation={3} sx={{
-                                maxWidth: '60%',
-                                minWidth: '210mm',
-                                minHeight: '97mm',
-                                marginLeft: 'auto',
-                                marginRight: 'auto',
-                                marginTop: 4,
-                                marginBottom: -2,
-                                display: 'flex',
-                                justifyItems: 'center',
-                                flexDirection: 'column',
-                                padding: '4em 2em'
-                            }}>
-                                {textOutput[i]?.map((line, no) => {
-                                    return <Box sx={{
-                                        whiteSpace: "pre",
-                                        fontFamily: fontFamily
-                                    }}>{formatNumber(no)}&gt; {line}</Box>
-                                })}
-                            </Paper>
-                        }
-                        case MixDeviceType.CARD_PUNCHER: {
-                            return <Paper key={id} elevation={3} sx={{}}>
-                                {textOutput[i]?.map((line, no) => {
-                                    return <Box sx={{
-                                        whiteSpace: "pre",
-                                        fontFamily: "monospace"
-                                    }}>Card #{formatNumber(no)}: {line}</Box>
-                                })}
-                            </Paper>
-                        }
-                        case MixDeviceType.CARD_READER: {
-                            return <Paper key={id} sx={{width: '100%'}}>
-                                <TextField sx={{width: '100%'}} size={"small"} variant={"standard"}/>
-                            </Paper>
-                        }
-                        default:
-                            return <>Unkown Device {dev.type}</>
-                    }
-                })}
-            </Box>
+            {devices.map(({deviceId}) => {
+                const view = deviceViews.get(deviceId.toString());
+                return view && <Box key={deviceId} sx={{flexGrow: 1, overflow: 'scroll', display: deviceId.toString() === activeDeviceId ? 'block' : 'none'}}>
+                    {view}
+                </Box>;
+            })}
+
         </PanelBox>
     );
 }

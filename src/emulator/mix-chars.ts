@@ -15,3 +15,12 @@ export function encodeToMixBytes(s: string) {
     }
     return bytes;
 }
+
+export function clean(s: string): string {
+    s = s.toUpperCase();
+    const result: string[] = [];
+    for (let i = 0; i < s.length; i++) {
+        if (NUMS[s[i]] !== undefined) result.push(s[i]);
+    }
+    return result.join('');
+}

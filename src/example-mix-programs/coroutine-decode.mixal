@@ -1,5 +1,5 @@
 * SUBROUTINE FOR CHARACTER INPUT
-READER    EQU   19            Unit number of card reader
+READER    EQU   16            Unit number of card reader
 INPUT     ORIG  *+16          Place for input cards
 NEXTCHAR  STJ   9F            Entrance to subroutine
           JXNZ  3F            Initially rX = 0

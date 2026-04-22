@@ -2,14 +2,72 @@ import {MIX_WORD_SIZE, MixWord} from "../mix-word.ts";
 import {MixEmulator, MixMemory} from "../mix-emulator.ts";
 import {decodeToMixChars, encodeToMixBytes} from "../mix-chars.ts";
 
-export enum MixDeviceType {
-    TAPE = "TAPE",
-    DISK = "DISK",
-    CARD_READER = "CARD_READER",
-    CARD_PUNCHER = "CARD_PUNCHER",
-    PRINTER = "PRINTER",
-    TYPEWRITER = "TYPEWRITER",
-    PAPER_TAPE = "PAPER_TAPE",
+export const PRINTER = "PRINTER";
+export const TAPE = "TAPE";
+export const DISK = "DISK";
+export const CARD_READER = "CARD_READER";
+export const CARD_PUNCHER = "CARD_PUNCHER";
+export const TYPE_WRITER = "TYPE_WRITER";
+export const PAPER_TAPE = "PAPER_TAPE";
+export const MIX_DEVICE_TYPES: MixDeviceType[] = [
+    PRINTER,
+    TAPE,
+    DISK,
+    CARD_READER,
+    CARD_PUNCHER,
+    TYPE_WRITER,
+    PAPER_TAPE
+];
+export type MixDeviceType = typeof TAPE
+    | typeof DISK
+    | typeof CARD_READER
+    | typeof CARD_PUNCHER
+    | typeof PRINTER
+    | typeof TYPE_WRITER
+    | typeof PAPER_TAPE;
+
+export interface MixDeviceConfig {
+    blockSize: number;
+    idStart: number;
+    idEnd: number;
+}
+
+export const MixDeviceConfigs: Record<MixDeviceType, MixDeviceConfig> = {
+    TAPE: {
+        blockSize: 100,
+        idStart: 0,
+        idEnd: 7,
+    },
+    DISK: {
+        blockSize: 100,
+        idStart: 8,
+        idEnd: 15,
+    },
+    CARD_READER: {
+        blockSize: 16,
+        idStart: 16,
+        idEnd: 16,
+    },
+    CARD_PUNCHER: {
+        blockSize: 16,
+        idStart: 17,
+        idEnd: 17,
+    },
+    PRINTER: {
+        blockSize: 24,
+        idStart: 18,
+        idEnd: 18,
+    },
+    TYPE_WRITER: {
+        blockSize: 14,
+        idStart: 19,
+        idEnd: 19,
+    },
+    PAPER_TAPE: {
+        blockSize: 14,
+        idStart: 20,
+        idEnd: 20,
+    },
 }
 
 export enum MixDeviceMode {
@@ -97,6 +155,7 @@ export function createTextSource(lines: string[]): MixTextSource {
  * A mix device has a type, block size (in words), busy flag, mode (ReadOnly, WriteOnly, or RW) and three operations
  */
 export interface MixDevice {
+    id?: number;
     type: MixDeviceType;
     blockSize: number;
     busy: boolean;
@@ -113,6 +172,7 @@ export abstract class AbstractMixDevice implements MixDevice {
     private readonly _blockSize: number;
     private readonly _mode: MixDeviceMode;
     private readonly _iocHandler: IocHandler;
+    private _id?: number;
     private _busy: boolean;
 
     constructor(type: MixDeviceType, blockSize: number, mode: MixDeviceMode, iocHandler: IocHandler = () => Promise.resolve()) {
@@ -120,6 +180,7 @@ export abstract class AbstractMixDevice implements MixDevice {
         this._blockSize = blockSize;
         this._mode = mode;
         this._iocHandler = iocHandler;
+        this._id = undefined;
         this._busy = false;
     }
 
@@ -173,6 +234,14 @@ export abstract class AbstractMixDevice implements MixDevice {
         this._busy = v;
     }
 
+    get id(): number | undefined {
+        return this._id;
+    }
+
+    set id(v: number | undefined) {
+        this._id = v;
+    }
+
     get type(): MixDeviceType {
         return this._type;
     }
@@ -222,16 +291,16 @@ function mixWordToText(data: MixWord[]) {
     return data.map(word => decodeToMixChars(word.bytes.slice(1))).join('');
 }
 
-export class MixPrinter extends AbstractMixDevice {
+export class LinePrinter extends AbstractMixDevice {
     private readonly _textSink: MixTextSink;
 
-    constructor(textSink: MixTextSink, onNewPage: () => Promise<void>) {
-        super(MixDeviceType.PRINTER, 24, MixDeviceMode.WRITE_ONLY,
-            (m) => {
+    constructor(textSink: MixTextSink, onIoc: IocHandler) {
+        super(PRINTER, MixDeviceConfigs[PRINTER].blockSize, MixDeviceMode.WRITE_ONLY,
+            (m, rX) => {
                 if (m !== 0) {
                     return Promise.reject(new Error("m must be zero for printer IOC."));
                 }
-                return onNewPage();
+                return onIoc(m, rX);
             });
         this._textSink = textSink;
     }
@@ -245,7 +314,7 @@ export class CardReader extends AbstractMixDevice {
     private readonly _textSource: MixTextSource;
 
     constructor(textSource: MixTextSource) {
-        super(MixDeviceType.CARD_READER, 16, MixDeviceMode.READ_ONLY);
+        super(CARD_READER, 16, MixDeviceMode.READ_ONLY);
         this._textSource = textSource;
     }
 
@@ -258,7 +327,7 @@ export class CardPuncher extends AbstractMixDevice {
     private readonly _textSink: MixTextSink;
 
     constructor(textSink: MixTextSink) {
-        super(MixDeviceType.CARD_PUNCHER, 16, MixDeviceMode.WRITE_ONLY);
+        super(CARD_PUNCHER, 16, MixDeviceMode.WRITE_ONLY);
         this._textSink = textSink;
     }
 
@@ -272,7 +341,7 @@ export class TeletypeWriter extends AbstractMixDevice {
     private readonly _textSource: MixTextSource;
 
     constructor(textSink: MixTextSink, textSource: MixTextSource) {
-        super(MixDeviceType.TYPEWRITER, 14, MixDeviceMode.READ_WRITE);
+        super(TYPE_WRITER, 14, MixDeviceMode.READ_WRITE);
         this._textSink = textSink;
         this._textSource = textSource;
     }
@@ -283,5 +352,74 @@ export class TeletypeWriter extends AbstractMixDevice {
 
     protected async writeInternal(_: number, src: MixWordSource): Promise<void> {
         return writeWordsToTextSink(src, this.blockSize, this._textSink);
+    }
+}
+
+export type DeviceRegistry = Record<number, MixDevice>;
+
+export type RegisterDeviceFn = (device: MixDevice) => number;
+
+export type UnregisterDeviceFn = (device: MixDevice) => void;
+
+export interface MixDeviceEntry {
+    id: number;
+    device: MixDevice;
+}
+
+export class MixDeviceRegistry implements DeviceRegistry {
+    [x: number]: MixDevice;
+
+    private readonly _mixDeviceIds: Record<MixDeviceType, number[]> = {
+        CARD_PUNCHER: [], CARD_READER: [], DISK: [], PAPER_TAPE: [], PRINTER: [], TAPE: [], TYPE_WRITER: []
+
+    };
+    private _devices: MixDeviceEntry[];
+
+    constructor() {
+        this._devices = [];
+        for (const type of MIX_DEVICE_TYPES) {
+            const config = MixDeviceConfigs[type];
+            for (let i = config.idStart; i <= config.idEnd; i++) {
+                this._mixDeviceIds[type].push(i);
+            }
+        }
+    }
+
+    register(device: MixDevice): number {
+        if (this.alreadyRegistered(device)) {
+            console.log(`Device `, device, ' already registered.');
+            return -1;
+        }
+        const id = this.nextId(device.type);
+        if (id === undefined) return -1;
+        this[id] = device;
+        device.id = id;
+        this._devices.push({id, device});
+        return id;
+    }
+
+    unregister(device: MixDevice): void {
+        const entry = this._devices.find((entry) => entry.device === device);
+        if (!entry) return;
+        delete this[entry.id];
+        device.id = undefined;
+        this._mixDeviceIds[entry.device.type].unshift(entry.id);
+        this._devices = this._devices.filter((e) => e !== entry);
+    }
+
+    get devices(): MixDeviceEntry[] {
+        return this._devices;
+    }
+
+    private alreadyRegistered(device: MixDevice): boolean {
+        return this._devices.find((entry) => {
+            return entry.device === device;
+        }) !== undefined;
+    }
+
+    private nextId(type: MixDeviceType): number | undefined {
+        const ids = this._mixDeviceIds[type];
+        if (ids.length === 0) return;
+        return ids.shift();
     }
 }

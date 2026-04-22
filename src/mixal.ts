@@ -7,8 +7,9 @@ import {
     CardReader,
     consoleTextSink,
     createTextSource,
-    type MixDevice,
-    MixPrinter, TeletypeWriter
+    MixDeviceRegistry,
+    LinePrinter,
+    TeletypeWriter
 } from "./emulator/io/mix-device.ts";
 
 async function readAll(filename: string) {
@@ -35,19 +36,19 @@ async function main() {
     const program = compile(content);
     const mix = new MixEmulator();
 
-    const devices: Record<number, MixDevice> = mix.devices;
+    const deviceRegistry: MixDeviceRegistry = mix.deviceRegistry;
     const rl = readline.createInterface({input: process.stdin, output: process.stdout});
-    devices[16] = new CardReader(createTextSource(["A2B5E3426FG0ZYW3210PQ89R."]));
-    devices[17] = new CardPuncher(consoleTextSink);
-    devices[18] = new MixPrinter(consoleTextSink, async () => {
+    deviceRegistry.register(new CardReader(createTextSource(["A2B5E3426FG0ZYW3210PQ89R."])));
+    deviceRegistry.register(new CardPuncher(consoleTextSink));
+    deviceRegistry.register(new LinePrinter(consoleTextSink, async () => {
         rl.write("=== NEW PATE ===\n");
-    });
-    devices[19] = new TeletypeWriter(consoleTextSink, async (n) => {
+    }));
+    deviceRegistry.register(new TeletypeWriter(consoleTextSink, async (n) => {
         const line = await rl.question("MIX waiting for teletype writer: \n");
         if (line.length > n) return line.slice(0, n);
         if (line.length < n) return line.padEnd(n, ' ');
         return line;
-    });
+    }));
 
     mix.loadProgram(program);
     const ips = await mix.run();

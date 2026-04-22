@@ -1,7 +1,7 @@
 import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
 import type {MixProgram} from "./mix-asm.ts";
-import {createMixMemoryWordSource, type MixDevice as IMixDevice, MixDeviceMode} from './io/mix-device.ts';
+import {createMixMemoryWordSource, MixDeviceMode, MixDeviceRegistry} from './io/mix-device.ts';
 import {NUMS} from "./mix-chars.ts";
 import {formatNumber} from "./utils.ts";
 
@@ -112,11 +112,10 @@ export class MixEmulator {
     private _breakpoints: Set<number>;
 
     // New IO devices
-    private readonly _devices: Record<number, IMixDevice> = {};
+    private readonly _deviceRegistry: MixDeviceRegistry = new MixDeviceRegistry();
 
-    constructor(devices: Record<number, IMixDevice> = {}) {
+    constructor() {
         this._breakpoints = new Set<number>();
-        this._devices = devices;
         this.reset();
     }
 
@@ -295,7 +294,7 @@ export class MixEmulator {
     }
 
     async waitForDevices() {
-        return Promise.all(Object.values(this._devices).map(d => d.waitUntilReady()));
+        return Promise.all(this._deviceRegistry.devices.map(e => e.device.waitUntilReady()));
     }
 
     emitStateChange(reset: boolean = false) {
@@ -382,8 +381,8 @@ export class MixEmulator {
         return this.getCurrentState();
     }
 
-    get devices(): Record<number, IMixDevice> {
-        return this._devices;
+    get deviceRegistry(): MixDeviceRegistry {
+        return this._deviceRegistry;
     }
 
     private getI(i: number) {
@@ -801,7 +800,7 @@ export class MixEmulator {
         // IO
         "IOC": async (op) => {
             const M = this.getM(op.i, op.a);
-            const device = this._devices[op.f];
+            const device = this._deviceRegistry[op.f];
             if (device) {
                 await device.waitUntilReady();
                 // Don't wait for the IO operation to finish.
@@ -814,6 +813,7 @@ export class MixEmulator {
                         device.busy = false;
                         console.log(`${op.addr}: IOC m=${M} finished on Unit ${op.f}`);
                     });
+                this.emitStateChange();
                 return Promise.resolve();
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
@@ -822,7 +822,7 @@ export class MixEmulator {
         "IN": async (op) => {
             // read data from device
             const M = this.getM(op.i, op.a);
-            const device = this._devices[op.f];
+            const device = this._deviceRegistry[op.f];
             if (device) {
                 if (device.mode === MixDeviceMode.WRITE_ONLY) {
                     this.setError(`Device Unit ${op.f} is write only.`);
@@ -840,13 +840,14 @@ export class MixEmulator {
                 }).finally(() => {
                     device.busy = false;
                 });
+                this.emitStateChange();
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "OUT": async (op) => {
             const M = this.getM(op.i, op.a);
-            const device = this._devices[op.f];
+            const device = this._deviceRegistry[op.f];
             if (device) {
                 if (device.mode === MixDeviceMode.READ_ONLY) {
                     this.setError(`Device Unit ${op.f} is read only.`);
@@ -862,12 +863,13 @@ export class MixEmulator {
                     .finally(() => {
                         device.busy = false;
                     });
+                // this.emitStateChange();
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
             }
         },
         "JRED": async (op) => {
-            const device = this._devices[op.f];
+            const device = this._deviceRegistry[op.f];
             if (device) {
                 if (!device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
@@ -882,7 +884,7 @@ export class MixEmulator {
             }
         },
         "JBUS": async (op) => {
-            const device = this._devices[op.f];
+            const device = this._deviceRegistry[op.f];
             if (device) {
                 if (device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {

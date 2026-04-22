@@ -46,7 +46,7 @@ export function MixEmulatorApp() {
                     sx={{flexGrow: 2}}
                     mix={mix} mixProgram={mixProgram}/>
             </Stack>
-            <MixDevicesView devicesRef={mix.devices}
+            <MixDevicesView mixDeviceRegistry={mix.deviceRegistry}
                             devicesHeight={devicesHeight}
                             onStateChange={(height) => setDevicesHeight(height)}/>
         </Container>
