@@ -11,6 +11,7 @@ import {MixStateView} from "./MixStateView.tsx";
 import {PanelBox} from "../common/Common.tsx";
 import {MixWordView} from "../common/MixWord.tsx";
 import {MixMemoryView} from "./MixMemoryView.tsx";
+import {MixDevicesView} from "../io/MixDevicesView.tsx";
 
 interface MixMachineControllerProps {
     mix: MixEmulator,
@@ -130,8 +131,12 @@ export function MixMachineView({mix, mixProgram, sx}: MixMachineViewProps) {
             <MixWordView word={mix.rJ}/>
         </Stack>
         <Divider/>
-        <Box sx={{flexDirection: 'column', display: 'flex', p: 0.5, overflowY: 'scroll'}}>
-            <MixMemoryView mix={mix}/>
-        </Box>
+        <Stack sx={{overflowY: 'hidden'}}>
+            <Box sx={{flexDirection: 'column', display: 'flex', p: 0.5, overflowY: 'scroll'}}>
+                <MixMemoryView mix={mix}/>
+            </Box>
+            <MixDevicesView mixDeviceRegistry={mix.deviceRegistry}
+                            onStateChange={(height) => console.log(height)}/>
+        </Stack>
     </PanelBox>)
 }

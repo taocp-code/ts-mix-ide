@@ -4,13 +4,11 @@ import {Box, Container, Stack} from "@mui/material";
 import {type MixProgram} from "../emulator/mix-asm.ts";
 import {MixMachineView} from "./machine/MixMachineView.tsx";
 import {MixProgramView} from "./editor/MixProgramView.tsx";
-import {MIX_DEVICES_UI_HEIGHT_CLOSED, MixDevicesView} from "./io/MixDevicesView.tsx";
 import {MixAsmEditor} from "./editor/MixAsmEditor.tsx";
 
 export function MixEmulatorApp() {
     const mix = useMemo(() => new MixEmulator(), []);
     const [mixProgram, setMixProgram] = useState<MixProgram | null>(null);
-    const [devicesHeight, setDevicesHeight] = useState(MIX_DEVICES_UI_HEIGHT_CLOSED); // px
 
     useEffect(() => {
         if (mixProgram !== null) {
@@ -18,7 +16,7 @@ export function MixEmulatorApp() {
         }
     }, [mixProgram]);
 
-    const mainUIMaxHeight = useMemo(() => `calc(100% - ${devicesHeight + 40}px)`, [devicesHeight]);
+    const mainUIMaxHeight = useMemo(() => `calc(100% - 40px)`, []);
 
     return (
         <Container sx={{maxWidth: '100%', height: '100vh'}} maxWidth={false}>
@@ -37,7 +35,7 @@ export function MixEmulatorApp() {
             }}>
                 <MixAsmEditor
                     sx={{flexGrow: 1, minWidth: '20%'}}
-                    onCompile={(p) => setMixProgram(p)} mix={mix}/>
+                    onCompile={(p) => setMixProgram(p)}/>
                 <MixProgramView
                     sx={{flexGrow: 2, minWidth: 'max(25%, 490px)'}}
                     mix={mix}
@@ -46,9 +44,6 @@ export function MixEmulatorApp() {
                     sx={{flexGrow: 2}}
                     mix={mix} mixProgram={mixProgram}/>
             </Stack>
-            <MixDevicesView mixDeviceRegistry={mix.deviceRegistry}
-                            devicesHeight={devicesHeight}
-                            onStateChange={(height) => setDevicesHeight(height)}/>
         </Container>
     )
 }

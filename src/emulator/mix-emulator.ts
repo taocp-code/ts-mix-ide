@@ -490,7 +490,8 @@ export class MixEmulator {
     private operations: Record<string, MixOpFunc> = {
         "NOP": async (_: MixOperation) => {
         },
-        "HLT": async (_: MixOperation) => {
+        "HLT": async (op: MixOperation) => {
+            this._pc = op.addr;
             this._halt = true;
         },
         "ADD": async (op: MixOperation) => {
@@ -854,6 +855,7 @@ export class MixEmulator {
                     this.setError(`${formatNumber(op.addr)}: IN m=${M} failed with error ${err} on Unit ${op.f}.`);
                 }).finally(() => {
                     device.busy = false;
+                    this.emitStateChange();
                 });
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
@@ -876,6 +878,7 @@ export class MixEmulator {
                     })
                     .finally(() => {
                         device.busy = false;
+                        this.emitStateChange();
                     });
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);

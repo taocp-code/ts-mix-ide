@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Box, Button, Tab, Tabs} from "@mui/material";
+import {Box, Button, Paper, Tab, Tabs} from "@mui/material";
 import {
     CARD_PUNCHER,
     CARD_READER,
@@ -22,7 +22,6 @@ import {
     TeletypeWriter,
     TYPE_WRITER
 } from "../../emulator/io/mix-device.ts";
-import {PanelBox} from "../common/Common.tsx";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import type {MixWord} from "../../emulator/mix-word.ts";
@@ -35,7 +34,6 @@ export const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
 
 interface MixDevicesViewProps {
     mixDeviceRegistry: MixDeviceRegistry,
-    devicesHeight: number,
     onStateChange: (height: number) => void
 }
 
@@ -114,7 +112,7 @@ export class MixDeviceConnection {
     }
 }
 
-export function MixDevicesView({mixDeviceRegistry, devicesHeight, onStateChange}: MixDevicesViewProps) {
+export function MixDevicesView({mixDeviceRegistry, onStateChange}: MixDevicesViewProps) {
     const [open, setOpen] = useState(false);
     useEffect(() => {
         onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
@@ -182,18 +180,19 @@ export function MixDevicesView({mixDeviceRegistry, devicesHeight, onStateChange}
     }, [devices]);
 
     return (
-        <PanelBox sx={{
-            height: `${devicesHeight}px`,
+        <Box sx={{
             display: 'flex',
             flexDirection: 'column',
-            border: '1px solid silver'
+            minHeight: open ? '450px' : '30px',
+            maxHeight: open ? '450px' : '30px',
         }}>
-            <Box sx={{
+            <Paper elevation={2} sx={{
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderBottom: 1,
                 borderColor: 'divider',
+                paddingTop: '2px',
             }}>
                 <Button size={"small"} onClick={() => {
                     setOpen(!open);
@@ -214,14 +213,14 @@ export function MixDevicesView({mixDeviceRegistry, devicesHeight, onStateChange}
                         }} label={`${deviceId} - ` + type.replaceAll('_', ' ')}/>);
                     })}
                 </Tabs>
-            </Box>
+            </Paper>
             {devices.map(({deviceId}) => {
                 const view = deviceViews.get(deviceId.toString());
-                return view && <Box key={deviceId} sx={{flexGrow: 1, overflow: 'scroll', display: deviceId.toString() === activeDeviceId ? 'block' : 'none'}}>
+                return view && <Box key={deviceId} sx={{flexGrow: 1, overflowY: 'scroll', display: deviceId.toString() === activeDeviceId ? 'block' : 'none'}}>
                     {view}
                 </Box>;
             })}
 
-        </PanelBox>
+        </Box>
     );
 }

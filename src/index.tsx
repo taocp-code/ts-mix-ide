@@ -8,9 +8,7 @@ const root = createRoot(
 );
 root.render(
     <StrictMode>
-        <React.Fragment>
-            <CssBaseline/>
-            <MixEmulatorApp/>
-        </React.Fragment>
+        <CssBaseline/>
+        <MixEmulatorApp/>
     </StrictMode>
 );
