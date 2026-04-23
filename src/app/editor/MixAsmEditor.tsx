@@ -46,6 +46,10 @@ function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
         })
     }, [EXAMPLE_MIX_PROGRAMS]);
 
+    useEffect(() => {
+        getMixProgram('/examples/table-of-primes.ms');
+    }, []);
+
     return (<>
         <Button onClick={handleClick}>Examples</Button>
         <Menu
