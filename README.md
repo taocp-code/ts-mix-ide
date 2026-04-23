@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="public/mix.png">
-</p>
-
 A MIX IDE that runs in web browsers.
 
 Hosted: TODO
