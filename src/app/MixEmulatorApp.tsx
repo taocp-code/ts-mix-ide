@@ -24,9 +24,15 @@ export function MixEmulatorApp() {
                 flexDirection: 'row', display: 'flex', p: '4px', height: '32px', '& img': {
                     height: '100%',
                 },
+                justifyContent: 'space-between',
                 width: '100%',
             }}>
                 <img src={'/mix.png'} alt={"MIX"}/>
+                <a target={"_blank"}
+                   style={{display: "inline-block", width: "24px"}}
+                   href={"https://github.com/taocp-code/ts-mix-ide#"}>
+                    <img src={'/GitHub_Invertocat_Black_Clearspace.png'}/>
+                </a>
             </Box>
 
             <Stack direction={"row"} sx={{
