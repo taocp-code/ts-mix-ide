@@ -33,6 +33,13 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                 mixMemoryWord: mix.memory.at(section.offset + i)
             };
         }), [section]);
+    useEffect(() => {
+        const prev = mix.getBreakPoints();
+        mix.setBreakPoints(breakPoints);
+        return () => {
+            mix.setBreakPoints(prev);
+        };
+    }, [breakPoints]);
     const lines = useMemo(() => {
         return dataAndSource.map(line => {
             const {label, addr, source, mixMemoryWord} = line;
@@ -66,10 +73,8 @@ function MixProgramSectionView({section, pc, mix}: { section: MixSection, pc: nu
                     setBreakPoints((prevState) => {
                         if (prevState.has(addr)) {
                             prevState.delete(addr);
-                            mix.removeBreakpoint(addr);
                         } else {
                             prevState.add(addr);
-                            mix.addBreakpoint(addr);
                         }
                         return new Set<number>(prevState);
                     });

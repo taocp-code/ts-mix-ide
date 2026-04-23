@@ -60,6 +60,7 @@ export interface MixState {
     profile: Record<number, number>;
     instructions: number;
     running: boolean;
+    ioBusy: boolean;
     ips: number;
     error?: string;
 }
@@ -135,6 +136,9 @@ export class MixEmulator {
         this._instructions = 0;
         this._profile = {};
         this._error = undefined;
+        this._deviceRegistry.devices.forEach(ent => {
+            ent.device.busy = false;
+        })
         this.emitStateChange(true);
     }
 
@@ -176,12 +180,12 @@ export class MixEmulator {
         this.emitRegisterAndMemoryChange();
     }
 
-    addBreakpoint(addr: number) {
-        this._breakpoints.add(addr);
+    setBreakPoints(breakPoints: Set<number>) {
+        this._breakpoints = breakPoints;
     }
 
-    removeBreakpoint(addr: number) {
-        this._breakpoints.delete(addr);
+    getBreakPoints() {
+        return this._breakpoints;
     }
 
     shouldPause(): boolean {
@@ -198,18 +202,21 @@ export class MixEmulator {
         }
 
         if (stepDelayMs <= 0) {
-            MixWord.setEmitChange(false); // turn off word update events
-            while (!this._halt) {
-                await this.step(false, 0);
-                if (this.shouldPause()) {
-                    break;
+            this._runAsyncTimer = setTimeout(async () => {
+                MixWord.setEmitChange(false); // turn off word update events
+                while (!this._halt) {
+                    await this.step(false, 0);
+                    if (this.shouldPause()) {
+                        break;
+                    }
                 }
-            }
-            await this.waitForDevices();
-            MixWord.setEmitChange(true);
-            this._runAsyncTimer = null;
-            this.emitStateChange();  // manually trigger state change after run terminates.
-            this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+                await this.waitForDevices();
+                MixWord.setEmitChange(true);
+                this._runAsyncTimer = null;
+                this.emitStateChange();  // manually trigger state change after run terminates.
+                this.emitRegisterAndMemoryChange(); // manually trigger registers and memory change.
+            });
+            this.emitStateChange();
             return;
         }
 
@@ -305,12 +312,12 @@ export class MixEmulator {
         this._stateChangeCallback.forEach(c => c(event));
     }
 
-    emitRegisterAndMemoryChange() {
-        this._rA.emitChange();
-        this._rX.emitChange();
-        this._rJ.emitChange();
-        for (const rI of this._rI) rI.emitChange();
-        for (const w of this._memory) w.emitChange();
+    emitRegisterAndMemoryChange(force: boolean = false) {
+        this._rA.emitChange(force);
+        this._rX.emitChange(force);
+        this._rJ.emitChange(force);
+        for (const rI of this._rI) rI.emitChange(force);
+        for (const w of this._memory) w.emitChange(force);
     }
 
     get overflow() {
@@ -404,6 +411,13 @@ export class MixEmulator {
      * @private
      */
     private getCurrentState(): MixState {
+        let ioBusy = false;
+        for (const d of this._deviceRegistry.devices) {
+            if (d.device.busy) {
+                ioBusy = true;
+                break;
+            }
+        }
         return {
             pc: this._pc,
             overflow: this._overflow,
@@ -416,6 +430,7 @@ export class MixEmulator {
             running: this.running,
             ips: this.ips,
             error: this._error,
+            ioBusy: ioBusy,
         }
     }
 
@@ -840,7 +855,6 @@ export class MixEmulator {
                 }).finally(() => {
                     device.busy = false;
                 });
-                this.emitStateChange();
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
             }
@@ -863,7 +877,6 @@ export class MixEmulator {
                     .finally(() => {
                         device.busy = false;
                     });
-                // this.emitStateChange();
             } else {
                 this.setError(`Device Unit ${op.f} not installed.`);
             }
@@ -874,6 +887,10 @@ export class MixEmulator {
                 if (!device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
                         // jumping to self, just wait
+                        this._rJ.value = this._pc;
+                        this._pc = op.addr;
+                        this.emitStateChange();
+                        this.emitRegisterAndMemoryChange(true);
                         await device.waitUntilBusy();
                     } else {
                         this.jmp(op);
@@ -888,6 +905,10 @@ export class MixEmulator {
             if (device) {
                 if (device.busy) {
                     if (this.getM(op.i, op.a) === op.addr) {
+                        this._rJ.value = this._pc;
+                        this._pc = op.addr;
+                        this.emitStateChange();
+                        this.emitRegisterAndMemoryChange(true);
                         await device.waitUntilReady();
                     } else {
                         this.jmp(op);

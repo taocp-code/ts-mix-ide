@@ -25,14 +25,15 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
     }, []);
     const halted = state.halt;
     const running = state.running;
+    const ioBusy = state.ioBusy;
     return <>
         {<><Tooltip title={'Step'}>
             <IconButton sx={{color: 'blue'}} onClick={async () => {
                 await mix.step();
-            }} disabled={running || halted}><RedoIcon/></IconButton>
+            }} disabled={running || halted || ioBusy}><RedoIcon/></IconButton>
         </Tooltip>
             <Tooltip title={running ? 'Stop' : 'Run'}>
-                <IconButton disabled={halted} sx={{color: running ? 'red' : 'green'}} onClick={async () => {
+                <IconButton disabled={halted || ioBusy} sx={{color: running ? 'red' : 'green'}} onClick={async () => {
                     if (!running) {
                         await mix.runAsync(asyncStepDelayMs);
                     } else {
@@ -41,7 +42,7 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
                 }}>{running ? <PauseIcon/> : <PlayArrowIcon/>}</IconButton>
             </Tooltip>
             <Tooltip title={"Fast Run"}>
-                <IconButton disabled={running || halted} onClick={async () => {
+                <IconButton disabled={running || halted || ioBusy} onClick={async () => {
                     await mix.runAsync(0);
                 }}><FastForwardIcon/></IconButton>
             </Tooltip>
@@ -54,18 +55,19 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
                         mix.loadProgram(mixProgram);
                     }
                 });
-            }} disabled={running}><RestartAltIcon/></IconButton>
+            }} disabled={running || ioBusy}><RestartAltIcon/></IconButton>
         </Tooltip>
         <Box>
             <Tooltip title={"Emulator Status"}>
-                {halted
-                    ? <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>
-                    : (
-                        state.running
-                            ? <Chip size={"small"} color={"success"} label={"Running"} sx={{m: 1}}/>
-                            : <Chip size={"small"} color={"default"} label={"Paused"} sx={{m: 1}}/>
-                    )
-                }
+                <>{ioBusy && <Chip size={"small"} color={"warning"} label={"IO busy"} sx={{m: 1}}/>}
+                    {halted
+                        ? <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>
+                        : (
+                            state.running
+                                ? <Chip size={"small"} color={"success"} label={"Running"} sx={{m: 1}}/>
+                                : <Chip size={"small"} color={"default"} label={"Paused"} sx={{m: 1}}/>
+                        )
+                    }</>
             </Tooltip>
             <Tooltip title={"Total real world time spent in execution."}>
                 <Chip size={"small"} color={"info"}

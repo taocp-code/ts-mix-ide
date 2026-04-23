@@ -42,7 +42,11 @@ export function MixCardReader({connection}: MixCardReaderProps) {
 
     connection.setTextSource(textSource);
     const onUserInput = (text: string) => {
-        setBuffer(prev => prev + text.toUpperCase());
+        setBuffer(prev => {
+            const s = prev + text;
+            if (s.length < 80) return s.padEnd(80, '.');
+            return s.slice(0, 80);
+        });
     }
 
     const pendingReadBytes = pendingReads.map(r => r.n).reduce((a, b) => a + b, 0);
@@ -50,9 +54,10 @@ export function MixCardReader({connection}: MixCardReaderProps) {
         <Typography>Buffered: ({buffer.length}) "{buffer}" </Typography>
         <Typography>Pending Read Bytes: {pendingReadBytes}</Typography>
         <Typography>Remain: {pendingReadBytes - buffer.length}</Typography>
-        <TextField label={"Type Here"} fullWidth={true} value={text} variant={"standard"} size={"small"} onChange={(e) => {
-            setText(clean(e.target.value));
-        }} onKeyDown={e => {
+        <TextField label={"Type Here"} fullWidth={true} value={text} variant={"standard"} size={"small"}
+                   onChange={(e) => {
+                       setText(clean(e.target.value));
+                   }} onKeyDown={e => {
             if (e.key === 'Enter') {
                 onUserInput(text);
                 setText('');

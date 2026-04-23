@@ -251,8 +251,8 @@ export class MixWord implements Iterable<MixByte> {
         return this;
     }
 
-    emitChange() {
-        if (!MixWord.emitChange) return;
+    emitChange(force: boolean = false) {
+        if (!MixWord.emitChange && !force) return;
         const event: MixWordChangeEvent = {
             word: this,
         };
