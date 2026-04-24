@@ -1,6 +1,6 @@
 A MIX IDE that runs in web browsers.
 
-Hosted: https://mix-ide.netlify.app/
+https://mix-ide.netlify.app/
 
 ## Examples
 
