@@ -1,8 +1,12 @@
 @external propSource highlighting from "./highlight.js"
-@top Program { (MixalOpLine | LineComment)* }
+@top Program { (MixalOpLine | LineComment)* MixalOpLast }
 
 MixalOpLine {
-   LOC Op Comment "\n"
+   (LOC Op Comment) "\n"
+}
+
+MixalOpLast {
+   (LOC Op Comment) | ()
 }
 
 Comment {
@@ -14,26 +18,30 @@ LOC {
 }
 
 Op {
-    MixOpAddr | MixalPseudoOp | MixalALF
+    MixOpAddr | MixalPseudoOp | MixalALF | MixCHN
+}
+
+MixCHN {
+   MixOpNameCHN
 }
 
 MixOpAddr {
     MixOp space Addr
 }
 MixOp {
-    "ADD"|"CHAR"|"CMP1"|"CMP2"|"CMP3"|"CMP4"|"CMP5"|"CMP6"|"CMPA"|"CMPX"|"DEC1"|"DEC2"|"DEC3"|"DEC4"|"DEC5"|"DEC6"|"DECA"|"DECX"|"DIV"|"ENN1"|"ENN2"|"ENN3"|"ENN4"|"ENN5"|"ENN6"|"ENNA"|"ENNX"|"ENT1"|"ENT2"|"ENT3"|"ENT4"|"ENT5"|"ENT6"|"ENTA"|"ENTX"|"HLT"|"IN"|"INC1"|"INC2"|"INC3"|"INC4"|"INC5"|"INC6"|"INCA"|"INCX"|"IOC"|"J1N"|"J1NN"|"J1NP"|"J1NZ"|"J1P"|"J1Z"|"J2N"|"J2NN"|"J2NP"|"J2NZ"|"J2P"|"J2Z"|"J3N"|"J3NN"|"J3NP"|"J3NZ"|"J3P"|"J3Z"|"J4N"|"J4NN"|"J4NP"|"J4NZ"|"J4P"|"J4Z"|"J5N"|"J5NN"|"J5NP"|"J5NZ"|"J5P"|"J5Z"|"J6N"|"J6NN"|"J6NP"|"J6NZ"|"J6P"|"J6Z"|"JAN"|"JANN"|"JANP"|"JANZ"|"JAP"|"JAZ"|"JBUS"|"JE"|"JG"|"JGE"|"JL"|"JLE"|"JMP"|"JNE"|"JNOV"|"JOV"|"JRED"|"JSJ"|"JXN"|"JXNN"|"JXNP"|"JXNZ"|"JXP"|"JXZ"|"LD1"|"LD1N"|"LD2"|"LD2N"|"LD3"|"LD3N"|"LD4"|"LD4N"|"LD5"|"LD5N"|"LD6"|"LD6N"|"LDA"|"LDAN"|"LDX"|"LDXN"|"MOVE"|"MUL"|"NOP"|"NUM"|"OUT"|"SLA"|"SLAX"|"SLC"|"SRA"|"SRAX"|"SRC"|"ST1"|"ST2"|"ST3"|"ST4"|"ST5"|"ST6"|"STA"|"STJ"|"STX"|"STZ"|"SUB"
+    MixOpName
 }
 Addr {
-    A_part? I_part? F_part?
+    A_part I_part F_part
 }
 A_part {
-    Expression | LiteralConstant
+    Expression | LiteralConstant | ()
 }
 I_part {
-    "," Expression
+    "," Expression | ()
 }
 F_part {
-    "(" Expression ")"
+    ("(" Expression ")") | ()
 }
 
 MixalPseudoOp {
@@ -45,6 +53,7 @@ MixalOp {
 MixalALF {
     "ALF" " " ALF_Text
 }
+ALF_Text { MixAlphabet MixAlphabet  MixAlphabet MixAlphabet MixAlphabet}
 Expression {
     AtomicExpression | (PlusOrMinus AtomicExpression) | (Expression BinaryOp AtomicExpression)
 }
@@ -52,26 +61,36 @@ BinaryOp {
 "+"|"-"|"*"|"/"|"//"|":"
 }
 AtomicExpression {
-    Asterisk | Number | SymbolReference
+    Asterisk | LocalRefOrNumber | Symbol
+}
+LocalRefOrNumber {
+    (Digit+) | (Digit LocalRefDir)
 }
 LiteralConstant {"=" WValue "="}
 WValue {
     ExpressionAndFPart | (WValue "," ExpressionAndFPart)
 }
 ExpressionAndFPart {
-    Expression F_part?
+    Expression F_part
 }
 
 @tokens {
+  MixAlphabet {$[ a-zA-Z0-9.,()+\-*/=$<>@;:'ΔΣΠ]}
   space { $[ ]+ }
   LineComment { "*" ![\n]* "\n" }
   CommentText { space ![\n]* }
   "\n"
-  LocalSymbol { $[\d] $[hH] }
-  Symbol { ($[\d]? $[\w])+ }
-  SymbolReference { ($[\w]$[\d])+ }
-  ALF_Text { $[\w ] $[\w ]? $[\w ]? $[\w ]? $[\w ]? }
+  LocalSymbol { $[0-9] $[hH] }
+  Symbol { $[a-zA-Z]$[a-zA-Z0-9]* }
+
   Asterisk { "*" }
-  Number {$[\d]+}
+  Digit {$[0-9]}
+  LocalRefDir {$[fFbB]}
   PlusOrMinus { $[+-] }
+  MixOpName {
+     "ADD"|"CMP1"|"CMP2"|"CMP3"|"CMP4"|"CMP5"|"CMP6"|"CMPA"|"CMPX"|"DEC1"|"DEC2"|"DEC3"|"DEC4"|"DEC5"|"DEC6"|"DECA"|"DECX"|"DIV"|"ENN1"|"ENN2"|"ENN3"|"ENN4"|"ENN5"|"ENN6"|"ENNA"|"ENNX"|"ENT1"|"ENT2"|"ENT3"|"ENT4"|"ENT5"|"ENT6"|"ENTA"|"ENTX"|"IN"|"INC1"|"INC2"|"INC3"|"INC4"|"INC5"|"INC6"|"INCA"|"INCX"|"IOC"|"J1N"|"J1NN"|"J1NP"|"J1NZ"|"J1P"|"J1Z"|"J2N"|"J2NN"|"J2NP"|"J2NZ"|"J2P"|"J2Z"|"J3N"|"J3NN"|"J3NP"|"J3NZ"|"J3P"|"J3Z"|"J4N"|"J4NN"|"J4NP"|"J4NZ"|"J4P"|"J4Z"|"J5N"|"J5NN"|"J5NP"|"J5NZ"|"J5P"|"J5Z"|"J6N"|"J6NN"|"J6NP"|"J6NZ"|"J6P"|"J6Z"|"JAN"|"JANN"|"JANP"|"JANZ"|"JAP"|"JAZ"|"JBUS"|"JE"|"JG"|"JGE"|"JL"|"JLE"|"JMP"|"JNE"|"JNOV"|"JOV"|"JRED"|"JSJ"|"JXN"|"JXNN"|"JXNP"|"JXNZ"|"JXP"|"JXZ"|"LD1"|"LD1N"|"LD2"|"LD2N"|"LD3"|"LD3N"|"LD4"|"LD4N"|"LD5"|"LD5N"|"LD6"|"LD6N"|"LDA"|"LDAN"|"LDX"|"LDXN"|"MOVE"|"MUL"|"NOP"|"OUT"|"SLA"|"SLAX"|"SLC"|"SRA"|"SRAX"|"SRC"|"ST1"|"ST2"|"ST3"|"ST4"|"ST5"|"ST6"|"STA"|"STJ"|"STX"|"STZ"|"SUB"
+  }
+  MixOpNameCHN {
+     "CHAR"|"NUM"|"HLT"
+  }
 }

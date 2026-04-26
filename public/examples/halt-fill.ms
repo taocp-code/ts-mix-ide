@@ -1,5 +1,5 @@
 * Fill all 4000 words with HLT instruction
-      ORIG 3991
+A      ORIG 3991
 START ENT1 0
       MOVE 3995
 1H    MOVE 0(43)

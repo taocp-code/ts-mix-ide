@@ -17,8 +17,8 @@ START   IOC    0(PRINTER)
 6H      ENTA   0
         ENTX   0,2
         DIV    PRIME,3
-        jxz 4B
-        cmpa PRIME,3
+        JXZ 4B
+        CMPA PRIME,3
         INC3 1
         JG 6B
         JMP 2B
