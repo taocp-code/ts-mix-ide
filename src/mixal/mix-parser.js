@@ -1,6 +1,12 @@
 import * as fs from 'fs/promises';
 import {parser} from "./parser.js";
 
+const a = 'a'.charCodeAt(0);
+for (let i = 0; i < 26; i++) {
+    const ch = String.fromCharCode(a + i);
+    console.log(`${ch} {$[${ch}${ch.toUpperCase()}]}`);
+}
+
 fs.readFile('public/examples/coroutine-decode.ms').then(value => {
     const text = value.toString();
     const program = parser.parse(value.toString());

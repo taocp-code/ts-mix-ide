@@ -48,10 +48,10 @@ MixalPseudoOp {
     MixalOp WValue
 }
 MixalOp {
-    ("EQU"|"ORIG"|"CON"|"END") space
+    MixPseudoOpName space
 }
 MixalALF {
-    "ALF" " " ALF_Text
+    MixAlf " " ALF_Text
 }
 ALF_Text { MixAlphabet MixAlphabet  MixAlphabet MixAlphabet MixAlphabet}
 Expression {
@@ -80,17 +80,86 @@ ExpressionAndFPart {
   LineComment { "*" ![\n]* "\n" }
   CommentText { space ![\n]* }
   "\n"
-  LocalSymbol { $[0-9] $[hH] }
+  LocalSymbol { $[0-9] h }
   Symbol { $[a-zA-Z]$[a-zA-Z0-9]* }
 
   Asterisk { "*" }
   Digit {$[0-9]}
-  LocalRefDir {$[fFbB]}
+  LocalRefDir {f | b}
   PlusOrMinus { $[+-] }
   MixOpName {
-     "ADD"|"CMP1"|"CMP2"|"CMP3"|"CMP4"|"CMP5"|"CMP6"|"CMPA"|"CMPX"|"DEC1"|"DEC2"|"DEC3"|"DEC4"|"DEC5"|"DEC6"|"DECA"|"DECX"|"DIV"|"ENN1"|"ENN2"|"ENN3"|"ENN4"|"ENN5"|"ENN6"|"ENNA"|"ENNX"|"ENT1"|"ENT2"|"ENT3"|"ENT4"|"ENT5"|"ENT6"|"ENTA"|"ENTX"|"IN"|"INC1"|"INC2"|"INC3"|"INC4"|"INC5"|"INC6"|"INCA"|"INCX"|"IOC"|"J1N"|"J1NN"|"J1NP"|"J1NZ"|"J1P"|"J1Z"|"J2N"|"J2NN"|"J2NP"|"J2NZ"|"J2P"|"J2Z"|"J3N"|"J3NN"|"J3NP"|"J3NZ"|"J3P"|"J3Z"|"J4N"|"J4NN"|"J4NP"|"J4NZ"|"J4P"|"J4Z"|"J5N"|"J5NN"|"J5NP"|"J5NZ"|"J5P"|"J5Z"|"J6N"|"J6NN"|"J6NP"|"J6NZ"|"J6P"|"J6Z"|"JAN"|"JANN"|"JANP"|"JANZ"|"JAP"|"JAZ"|"JBUS"|"JE"|"JG"|"JGE"|"JL"|"JLE"|"JMP"|"JNE"|"JNOV"|"JOV"|"JRED"|"JSJ"|"JXN"|"JXNN"|"JXNP"|"JXNZ"|"JXP"|"JXZ"|"LD1"|"LD1N"|"LD2"|"LD2N"|"LD3"|"LD3N"|"LD4"|"LD4N"|"LD5"|"LD5N"|"LD6"|"LD6N"|"LDA"|"LDAN"|"LDX"|"LDXN"|"MOVE"|"MUL"|"NOP"|"OUT"|"SLA"|"SLAX"|"SLC"|"SRA"|"SRAX"|"SRC"|"ST1"|"ST2"|"ST3"|"ST4"|"ST5"|"ST6"|"STA"|"STJ"|"STX"|"STZ"|"SUB"
+     a d d|
+     c m p registers |
+     d e c registers |
+     d i v|
+     e n n registers|
+     e n t registers|
+     i n c registers|
+     i n|
+     i o c|
+     j registers n|
+     j registers p|
+     j registers z|
+     j registers n n|
+     j registers n p|
+     j registers n z|
+     j b u s|
+     j e|
+     j g|
+     j (n|l|g) e|
+     j m p|
+     j n o v|
+     j o v|
+     j r e d|
+     j s j|
+     l d registers|
+     l d registers n|
+     s t (registers|j|z)|
+     m o v e|
+     m u l|
+     n o p|
+     o u t|
+     s (l|r) (a|c)|
+     s (l|r) a x|
+     s u b
   }
   MixOpNameCHN {
-     "CHAR"|"NUM"|"HLT"
+    c h a r|
+    n u m|
+    h l t
   }
+  MixPseudoOpName {
+     e q u|
+     o r i g|
+     c o n|
+     e n d
+  }
+  MixAlf {a l f}
+  registers {$[123456aAxX]}
+  a {$[aA]}
+  b {$[bB]}
+  c {$[cC]}
+  d {$[dD]}
+  e {$[eE]}
+  f {$[fF]}
+  g {$[gG]}
+  h {$[hH]}
+  i {$[iI]}
+  j {$[jJ]}
+  // k {$[kK]}
+  l {$[lL]}
+  m {$[mM]}
+  n {$[nN]}
+  o {$[oO]}
+  p {$[pP]}
+  q {$[qQ]}
+  r {$[rR]}
+  s {$[sS]}
+  t {$[tT]}
+  u {$[uU]}
+  v {$[vV]}
+  // w {$[wW]}
+  x {$[xX]}
+  // y {$[yY]}
+  z {$[zZ]}
 }

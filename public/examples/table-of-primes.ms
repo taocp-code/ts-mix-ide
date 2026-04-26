@@ -1,6 +1,6 @@
 * EXAMPLE PROGRAM ... TABLE OF PRIMES
 *
-L       EQU    500
+L       eqU    500
 PRINTER EQU    18
 PRIME   EQU    -1
 BUF0    EQU    2000(1:5)
@@ -9,7 +9,7 @@ BUF1    EQU    BUF0+25
 START   IOC    0(PRINTER)
         LD1    =1-L=
         LD2    =3=
-2H      INC1   1
+2H      iNc1   1
         ST2    PRIME+L,1
         J1Z    2F
 4H      INC2   2
