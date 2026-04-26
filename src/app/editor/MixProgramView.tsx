@@ -1,4 +1,4 @@
-import type {MixProgram, MixSection} from "../../emulator/mix-asm.ts";
+import type {MixProgram, MixSection} from "../../mixal/mix-asm.ts";
 import {MixEmulator} from "../../emulator/mix-emulator.ts";
 import React, {useEffect, useMemo, useState} from "react";
 import {formatNumber} from "../../emulator/utils.ts";

@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {MixEmulator} from "../emulator/mix-emulator.ts";
 import {Box, Container, Stack} from "@mui/material";
-import {type MixProgram} from "../emulator/mix-asm.ts";
+import {type MixProgram} from "../mixal/mix-asm.ts";
 import {MixMachineView} from "./machine/MixMachineView.tsx";
 import {MixProgramView} from "./editor/MixProgramView.tsx";
 import {MixAsmEditor} from "./editor/MixAsmEditor.tsx";

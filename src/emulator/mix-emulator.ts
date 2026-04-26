@@ -1,6 +1,6 @@
 import {_mix_field_encode, B, Compare, F_ALL, MIX_WORD_SIZE, MixWord, MixWordOverflowError} from "./mix-word.ts";
 import {decode, type MixOperation} from "./mix-opcodes.ts";
-import type {MixProgram} from "./mix-asm.ts";
+import type {MixProgram} from "../mixal/mix-asm.ts";
 import {createMixMemoryWordSource, MixDeviceMode, MixDeviceRegistry} from './io/mix-device.ts';
 import {NUMS} from "./mix-chars.ts";
 import {formatNumber} from "./utils.ts";
@@ -390,6 +390,10 @@ export class MixEmulator {
 
     get deviceRegistry(): MixDeviceRegistry {
         return this._deviceRegistry;
+    }
+
+    get ops() {
+        return Object.keys(this.operations);
     }
 
     private getI(i: number) {

@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import {MixEmulator} from "./mix-emulator.ts";
-import type {MixProgram} from "./mix-asm.ts";
+import type {MixProgram} from "../mixal/mix-asm.ts";
 import {MixWord} from "./mix-word.ts";
 import {MixOpCodeMap, MixOpCodes} from "./mix-opcodes.ts";
 

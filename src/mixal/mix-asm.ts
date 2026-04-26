@@ -1,9 +1,9 @@
 /**
  * The MIX assembly language parser.
  */
-import {F_OP_ADDR, F_OP_F, F_OP_I, MIX_BYTE_MAX, MIX_WORD_SIZE, MixWord} from "./mix-word.ts";
-import {MixOpCodeMap} from "./mix-opcodes.ts";
-import {encodeToMixBytes} from "./mix-chars.ts";
+import {F_OP_ADDR, F_OP_F, F_OP_I, MIX_BYTE_MAX, MIX_WORD_SIZE, MixWord} from "../emulator/mix-word.ts";
+import {MixOpCodeMap} from "../emulator/mix-opcodes.ts";
+import {encodeToMixBytes} from "../emulator/mix-chars.ts";
 
 export interface MixSourceLine {
     lineNo: number;
@@ -411,6 +411,8 @@ function parseLine(line: string) {
     if (op === 'ALF') {
         // "ALF" should followed by a space and five characters
         addr = line.substring(opEnd + 1, Math.min(opEnd + 1 + MIX_WORD_SIZE, line.length)).padStart(MIX_WORD_SIZE, ' ');
+    } else if (op === 'HLT' || op === 'NOP') {
+        addr = '';
     } else {
         const addrStart = skipWhitespaces(opEnd);
         const addrEnd = nextWhitespace(addrStart);

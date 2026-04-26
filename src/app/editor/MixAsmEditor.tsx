@@ -1,9 +1,9 @@
 import {EditorView, keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
-import {compile, type MixProgram} from "../../emulator/mix-asm.ts";
+import {compile, type MixProgram} from "../../mixal/mix-asm.ts";
 import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme, Tooltip, Typography} from "@mui/material";
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {EXAMPLE_MIX_PROGRAMS} from "../../examples.ts";
+import {EXAMPLE_MIX_PROGRAMS} from "../examples.ts";
 import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
 

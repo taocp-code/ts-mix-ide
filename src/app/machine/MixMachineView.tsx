@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {MixEmulator} from "../../emulator/mix-emulator.ts";
-import {type MixProgram} from "../../emulator/mix-asm.ts";
+import {type MixProgram} from "../../mixal/mix-asm.ts";
 import {Alert, Box, Chip, Divider, IconButton, Stack, type SxProps, type Theme, Tooltip} from '@mui/material';
 import RedoIcon from "@mui/icons-material/Redo";
 import FastForwardIcon from "@mui/icons-material/FastForward";

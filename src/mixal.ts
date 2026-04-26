@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as readline from 'readline/promises';
-import {compile} from "./emulator/mix-asm.ts";
+import {compile} from "./mixal/mix-asm.ts";
 import {MixEmulator} from "./emulator/mix-emulator.ts";
 import {
     CardPuncher,
@@ -35,6 +35,8 @@ async function main() {
     console.log(`Source file: ${sourceFile}, size: ${content.length} bytes.`);
     const program = compile(content);
     const mix = new MixEmulator();
+
+    console.log("\"" + mix.ops.sort().join("\"|\"") + "\"");
 
     const deviceRegistry: MixDeviceRegistry = mix.deviceRegistry;
     const rl = readline.createInterface({input: process.stdin, output: process.stdout});
