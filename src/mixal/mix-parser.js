@@ -19,7 +19,7 @@ fs.readFile('public/examples/table-of-primes.ms').then(value => {
             console.log(`${indent}!Error `, n.name, n.type.isError, text.substring(n.from, n.to));
         }
         indent = indent + '    ';
-    }, (n) => {
+    }, (_n) => {
         indent = indent.slice(0, indent.length - 4);
         // console.log(`${indent}Lea ${n.name}`)
     });
