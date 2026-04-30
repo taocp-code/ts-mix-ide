@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prepare": "lezer-generator src/mixal/mixal.grammar -o src/mixal/parser.js",
+    "prepare": "lezer-generator src/mixal/parser/mixal.grammar -o src/mixal/parser/parser.js",
     "dev": "vite",
     "test": "vitest",
     "build": "tsc && vite build",

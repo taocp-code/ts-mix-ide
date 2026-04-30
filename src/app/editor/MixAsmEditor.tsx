@@ -6,9 +6,10 @@ import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {EXAMPLE_MIX_PROGRAMS} from "../examples.ts";
 import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
-import {parser} from "../../mixal/parser.js";
+import {parser} from "../../mixal/parser/parser";
 import {styleTags, tags as t} from "@lezer/highlight"
 import {HighlightStyle, syntaxHighlighting, LRLanguage, LanguageSupport} from '@codemirror/language';
+import {formatMixal} from "../../mixal/mixal-formatter.ts";
 
 const parserWithMetadata = parser.configure({
     props: [
@@ -21,6 +22,7 @@ const parserWithMetadata = parser.configure({
             MixPseudoOpName: t.keyword,
             MixOpNameCHN: t.keyword,
             MixAlf: t.keyword,
+            Asterisk: t.keyword,
             ALF_Text: t.string,
             LineComment: t.lineComment,
             Comment: t.comment,
@@ -127,16 +129,20 @@ interface MixAsmEditorProps {
 
 export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
     const [code, setCode] = useState('');
+    const [formattedCode, setFormattedCode] = useState('');
     const startCompile = useCallback(() => {
         return setTimeout(() => {
-            const p = compile(code);
+            const p = compile(formattedCode);
             onCompile(p);
         });
-    }, [code]);
+    }, [formattedCode]);
 
     useEffect(() => {
         const t = startCompile();
         return () => clearTimeout(t);
+    }, [formattedCode]);
+    useEffect(() => {
+        setFormattedCode(formatMixal(code));
     }, [code]);
 
     return (<PanelBox sx={sx}>
@@ -145,7 +151,7 @@ export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
         </Box>
         <Divider/>
         <CodeMirror style={{fontSize: '0.8rem', flexGrow: 1, height: 'calc(100% - 30px)'}}
-                    value={code}
+                    value={formattedCode}
                     extensions={extensions}
                     onChange={(value) => {
                         setCode(value);

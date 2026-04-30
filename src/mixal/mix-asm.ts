@@ -4,6 +4,7 @@
 import {F_OP_ADDR, F_OP_F, F_OP_I, MIX_BYTE_MAX, MIX_WORD_SIZE, MixWord} from "../emulator/mix-word.ts";
 import {MixOpCodeMap} from "../emulator/mix-opcodes.ts";
 import {encodeToMixBytes} from "../emulator/mix-chars.ts";
+import {parseLine} from "./mixal-formatter.ts";
 
 export interface MixSourceLine {
     lineNo: number;
@@ -52,9 +53,6 @@ function isEmpty(s: string): boolean {
 }
 function isLocalSymbol(s: string, define: boolean = true): boolean {
     return define ? /\dh/i.test(s) : /\d[fb]/i.test(s);
-}
-function isWhitespace(c: string) {
-    return /\s/.test(c);
 }
 function isDefined(v: any): boolean {
     return v !== undefined;
@@ -385,41 +383,6 @@ export class Parser {
     }
 }
 
-
-// parse line into LOC, OP and ADDRESS
-// LOC OP and ADDRESS should not contain whitespaces.
-function parseLine(line: string) {
-    const nextWhitespace = (i: number) => {
-        while (i < line.length && !isWhitespace(line[i]))
-            i++;
-        return i;
-    }
-    const skipWhitespaces = (i: number) => {
-        while (i < line.length && isWhitespace(line[i]))
-            i++;
-        return i;
-    };
-    const locStart = 0;
-    const locEnd = nextWhitespace(locStart);
-    const loc = line.substring(locStart, locEnd);
-
-    const opStart = skipWhitespaces(locEnd);
-    const opEnd = nextWhitespace(opStart);
-    const op = line.substring(opStart, opEnd).toUpperCase();
-
-    let addr: string = '';
-    if (op === 'ALF') {
-        // "ALF" should followed by a space and five characters
-        addr = line.substring(opEnd + 1, Math.min(opEnd + 1 + MIX_WORD_SIZE, line.length)).padStart(MIX_WORD_SIZE, ' ');
-    } else if (op === 'HLT' || op === 'NOP') {
-        addr = '';
-    } else {
-        const addrStart = skipWhitespaces(opEnd);
-        const addrEnd = nextWhitespace(addrStart);
-        addr = line.substring(addrStart, addrEnd);
-    }
-    return {loc, op, addr};
-}
 
 interface UnresolvedReference {
     // counter value at the moment where the op is defined.

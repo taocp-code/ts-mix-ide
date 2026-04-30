@@ -1,4 +1,3 @@
-@external propSource highlighting from "./highlight.js"
 @top Program { (MixalOpLine | LineComment)* MixalOpLast }
 
 MixalOpLine {
