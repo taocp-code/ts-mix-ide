@@ -53,7 +53,6 @@ MixalOp {
 MixalALF {
     MixAlf " " ALF_Text
 }
-ALF_Text { MixAlphabet MixAlphabet  MixAlphabet MixAlphabet MixAlphabet}
 Expression {
     AtomicExpression | (PlusOrMinus AtomicExpression) | (Expression BinaryOp AtomicExpression)
 }
@@ -61,10 +60,7 @@ BinaryOp {
 "+"|"-"|"*"|"/"|"//"|":"
 }
 AtomicExpression {
-    Asterisk | LocalRefOrNumber | Symbol
-}
-LocalRefOrNumber {
-    (Digit+) | (Digit LocalRefDir)
+    Asterisk | LocalRef | SymbolRef | Number
 }
 LiteralConstant {"=" WValue "="}
 WValue {
@@ -75,17 +71,20 @@ ExpressionAndFPart {
 }
 
 @tokens {
+  @precedence {LocalRef Number}
+  Digit {$[0-9]}
   MixAlphabet {$[ a-zA-Z0-9.,()+\-*/=$<>@;:'ΔΣΠ]}
+  ALF_Text { MixAlphabet MixAlphabet  MixAlphabet MixAlphabet MixAlphabet }
+  Number { Digit+ }
   space { $[ ]+ }
   LineComment { "*" ![\n]* "\n" }
   CommentText { space ![\n]* }
   "\n"
-  LocalSymbol { $[0-9] h }
+  LocalSymbol { Digit h }
+  LocalRef { Digit (f | b) }
   Symbol { $[a-zA-Z]$[a-zA-Z0-9]* }
-
+  SymbolRef { $[a-zA-Z]$[a-zA-Z0-9]* }
   Asterisk { "*" }
-  Digit {$[0-9]}
-  LocalRefDir {f | b}
   PlusOrMinus { $[+-] }
   MixOpName {
      a d d|

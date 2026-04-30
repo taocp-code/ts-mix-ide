@@ -6,6 +6,49 @@ import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {EXAMPLE_MIX_PROGRAMS} from "../examples.ts";
 import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
+import {parser} from "../../mixal/parser.js";
+import {styleTags, tags as t} from "@lezer/highlight"
+import {HighlightStyle, syntaxHighlighting, LRLanguage, LanguageSupport} from '@codemirror/language';
+
+const parserWithMetadata = parser.configure({
+    props: [
+        styleTags({
+            Symbol: t.definition(t.variableName),
+            SymbolRef: t.variableName,
+            LocalSymbol: t.definition(t.variableName),
+            LocalRef: t.variableName,
+            MixOpName: t.keyword,
+            MixPseudoOpName: t.keyword,
+            MixOpNameCHN: t.keyword,
+            MixAlf: t.keyword,
+            ALF_Text: t.string,
+            LineComment: t.lineComment,
+            Comment: t.comment,
+            CommentText: t.comment,
+            Number: t.number,
+            "(": t.paren,
+            ")": t.paren,
+        }),
+    ]
+})
+
+const mixalLanguage = LRLanguage.define({
+    parser: parserWithMetadata
+});
+
+function mixal() {
+    return new LanguageSupport(mixalLanguage, []);
+}
+
+const myHighlightStyle = HighlightStyle.define([
+    {tag: t.string, color: "#ff0000", fontStyle: "bold"},
+    {tag: t.keyword, color: "#4903d5", fontStyle: "bold"},
+    {tag: t.comment, color: "#04af56", fontStyle: "italic"},
+    {tag: t.lineComment, color: "#04af56", fontStyle: "italic"},
+    {tag: t.variableName, color: "#d56203"},
+    {tag: t.definition(t.variableName), color: "#d56203", fontStyle: "bold"},
+    {tag: t.number, color: "#55a1eb"},
+])
 
 interface EditorFileMenuProps {
     onOpenFile: (code: string) => void;
@@ -73,6 +116,8 @@ const extensions = [
         "&": {height: "100%", width: '100%', maxWidth: '100%'},
         ".cm-scroller": {overflow: "auto"}
     }),
+    syntaxHighlighting(myHighlightStyle),
+    mixal(),
 ];
 
 interface MixAsmEditorProps {
