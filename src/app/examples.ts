@@ -27,5 +27,9 @@ export const EXAMPLE_MIX_PROGRAMS: Record<string, { src: string, desc: string }>
     "Maximum of 7 numbers": {
         src: toPath('maximum.ms'),
         desc: 'Converted from Program M in 1.3.2',
+    },
+    "Multiply permutations in cycle form": {
+        src: toPath('cyclic-perm-multiplication.ms'),
+        desc: 'Multiply permutations in cycle form.'
     }
 };

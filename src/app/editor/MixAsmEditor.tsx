@@ -1,5 +1,5 @@
 import {EditorView, keymap, lineNumbers} from "@codemirror/view";
-import {emacsStyleKeymap} from "@codemirror/commands";
+import {emacsStyleKeymap, indentMore} from "@codemirror/commands";
 import {compile, type MixProgram} from "../../mixal/mix-asm.ts";
 import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme, Tooltip, Typography} from "@mui/material";
 import React, {type MouseEvent, useCallback, useEffect, useMemo, useState} from "react";
@@ -10,6 +10,7 @@ import {parser} from "../../mixal/parser/parser";
 import {styleTags, tags as t} from "@lezer/highlight"
 import {HighlightStyle, LanguageSupport, LRLanguage, syntaxHighlighting} from '@codemirror/language';
 import {formatMixal} from "../../mixal/mixal-formatter.ts";
+import type {EditorState, StateCommand, Transaction} from "@codemirror/state";
 
 const parserWithMetadata = parser.configure({
     props: [
@@ -116,17 +117,16 @@ function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
     </>)
 }
 
-const extensions = [
-    basicSetup({tabSize: 8}),
-    keymap.of(emacsStyleKeymap),
-    lineNumbers(),
-    EditorView.theme({
-        "&": {height: "100%", width: '100%', maxWidth: '100%'},
-        ".cm-scroller": {overflowY: "auto"}
-    }),
-    syntaxHighlighting(myHighlightStyle),
-    mixal(),
-];
+interface StateCommandArg {
+    state: EditorState;
+    dispatch: (transaction: Transaction) => void;
+};
+const insertSpaces: StateCommand = ({state, dispatch}: StateCommandArg) => {
+    if (state.selection.ranges.some(r => !r.empty))
+        return indentMore({state, dispatch});
+    dispatch(state.update(state.replaceSelection(" ".repeat(8)), {scrollIntoView: true, userEvent: "input"}));
+    return true;
+};
 
 interface MixAsmEditorProps {
     onCompile: (_: MixProgram) => void;
@@ -151,6 +151,28 @@ export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
         setCompileTimeout(t);
         return t;
     }, []);
+
+    const formatCode: StateCommand = (_: StateCommandArg): boolean => {
+        handleCodeChange(formatMixal(code));
+        return true;
+    };
+
+    const extensions = [
+        basicSetup({tabSize: 8}),
+        keymap.of([
+            ...emacsStyleKeymap,
+            {key: 'Tab', run: insertSpaces},
+            {key: 'Ctrl-Alt-l', run: formatCode},
+        ]),
+        lineNumbers(),
+        EditorView.theme({
+            "&": {height: "100%", width: '100%', maxWidth: '100%'},
+            ".cm-scroller": {overflowY: "auto"}
+        }),
+        syntaxHighlighting(myHighlightStyle),
+        mixal(),
+    ];
+
     return (<PanelBox sx={sx}>
         <Box sx={{flexDirection: 'row', display: 'flex', height: '24px'}}>
             <EditorFileMenu onOpenFile={(value) => handleCodeChange(formatMixal(value), 0)}/>
@@ -161,6 +183,7 @@ export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
         </Box>
         <Divider/>
         <CodeMirror style={{fontSize: '0.8rem', flexGrow: 1, height: 'calc(100% - 30px)'}}
+                    indentWithTab={false}
                     value={code}
                     extensions={extensions}
                     onChange={(value) => {

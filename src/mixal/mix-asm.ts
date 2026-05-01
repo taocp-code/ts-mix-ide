@@ -24,6 +24,7 @@ export interface MixSection {
 export interface MixProgram {
     start: number; // program start address,
     sections: MixSection[];
+    unresolvedReferences: UnresolvedReference[];
 }
 
 // @ts-ignore
@@ -70,7 +71,7 @@ interface EvalContext {
     counter: number;
     symbols: SymTable;
     locals: Record<number, LocalSymbol[]>;
-    unresolvedReferences: string[];
+    unresolvedSymbols: string[];
 }
 
 type OptionalNumber = number | undefined;
@@ -109,7 +110,7 @@ class SymbolExpr extends Expr {
         }
         const v = ctx.symbols[this._sym];
         if (!isDefined(v)) {
-            ctx.unresolvedReferences.push(this._sym);
+            ctx.unresolvedSymbols.push(this._sym);
         }
         return v;
     }
@@ -135,7 +136,7 @@ class SymbolExpr extends Expr {
             }
         }
         if (!isDefined(value)) {
-            ctx.unresolvedReferences.push(this._sym);
+            ctx.unresolvedSymbols.push(this._sym);
         }
         return value;
     }
@@ -363,7 +364,9 @@ export class Parser {
                     break;
             }
         }
-        if (expr === null) throw new Error('No expression found.');
+        if (expr === null) {
+            throw new Error('No expression found.');
+        }
         return expr;
     }
 
@@ -575,7 +578,7 @@ class MIXAssembler {
                     const i = iExpr.eval(ctx) || 0;
                     const f = fExpr.eval(ctx) || opcode.f;
                     w = MixWord.fromOp(a === undefined ? -1 : a, i, f, opcode.c);
-                    if (ctx.unresolvedReferences.length > 0) {
+                    if (ctx.unresolvedSymbols.length > 0) {
                         this._unresolvedReferences.push({
                             aExpr,
                             fExpr,
@@ -583,14 +586,16 @@ class MIXAssembler {
                             op: w,
                             counter: this._counter,
                             lineNo: this._lineNo,
-                            undefinedSymbols: ctx.unresolvedReferences,
+                            undefinedSymbols: ctx.unresolvedSymbols,
                         });
                     }
                     if (aExpr.literal) {
-                        if (!a) throw new Error('Undefined A literal value.');
+                        if (!isDefined(a)){
+                            throw new Error(`Undefined A literal value. ${this._line}`);
+                        }
                         this._literals.push({
                             op: w,
-                            value: a
+                            value: a!
                         })
                     }
                 }
@@ -600,11 +605,8 @@ class MIXAssembler {
             }
             this.tryFixUnresolvedReferences();
         });
-        if (this._unresolvedReferences.length > 0) {
-            throw new Error('Unresolved references: ' + this._unresolvedReferences);
-        }
         sections.sort((a, b) => a.offset - b.offset);
-        this._mixProgram = {start, sections};
+        this._mixProgram = {start, sections, unresolvedReferences: this._unresolvedReferences};
         return this._mixProgram;
     }
 
@@ -614,7 +616,7 @@ class MIXAssembler {
             counter: this._counter,
             symbols: this._symbols,
             locals: this._locals,
-            unresolvedReferences: [],
+            unresolvedSymbols: [],
         }
     }
 
@@ -646,7 +648,7 @@ class MIXAssembler {
             const a = aExpr.eval(ctx);
             const i = iExpr.eval(ctx) || 0;
             const f = fExpr.eval(ctx) || op.load(F_OP_F).value;
-            if (ctx.unresolvedReferences.length > 0) {
+            if (ctx.unresolvedSymbols.length > 0) {
                 newList.push({counter, lineNo, op, aExpr, iExpr, fExpr, undefinedSymbols});
             } else {
                 op.store(new MixWord(a), F_OP_ADDR);

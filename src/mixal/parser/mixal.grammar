@@ -75,7 +75,7 @@ ExpressionAndFPart {
   MixAlphabet {$[ a-zA-Z0-9.,()+\-*/=$<>@;:'ΔΣΠ]}
   ALF_Text { MixAlphabet MixAlphabet  MixAlphabet MixAlphabet MixAlphabet }
   Number { Digit+ }
-  space { $[ ]+ }
+  space { $[ \t]+ }
   LineComment { "*" ![\n]* "\n" }
   CommentText { space ![\n]* }
   "\n"
