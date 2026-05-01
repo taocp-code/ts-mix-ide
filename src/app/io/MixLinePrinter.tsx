@@ -11,9 +11,10 @@ export interface Page {
 function PageView({page}: { page: Page }) {
     const fontFamily = 'LinePrinter';
     return <Paper elevation={3} sx={{
-        maxWidth: '60%',
+        maxWidth: '90%',
         minWidth: '210mm',
-        minHeight: '97mm',
+        minHeight: '297mm',
+        width: 'fit-content',
         marginLeft: 'auto',
         marginRight: 'auto',
         marginTop: 4,
@@ -21,12 +22,13 @@ function PageView({page}: { page: Page }) {
         display: 'flex',
         justifyItems: 'center',
         flexDirection: 'column',
-        padding: '4em 2em'
+        padding: '4em',
     }}>
         {page.lines?.map((line, no) => {
             return <Box key={no} sx={{
+                width: 'fit-content',
                 whiteSpace: "pre",
-                fontFamily: fontFamily
+                fontFamily: fontFamily,
             }}>{line}</Box>
         })}
     </Paper>

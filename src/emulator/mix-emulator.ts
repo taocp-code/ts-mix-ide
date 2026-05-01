@@ -121,6 +121,7 @@ export class MixEmulator {
     }
 
     reset(random: boolean = false) {
+        MixWord.setEmitChange(false);
         this._memory.reset(random);
         this._rA.store(MixWord.initValue(random));
         this._rX.store(MixWord.initValue(random));
@@ -139,6 +140,7 @@ export class MixEmulator {
         this._deviceRegistry.devices.forEach(ent => {
             ent.device.busy = false;
         })
+        MixWord.setEmitChange(true);
         this.emitStateChange(true);
     }
 

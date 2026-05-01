@@ -5,7 +5,7 @@ import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme, Tooltip,
 import React, {type MouseEvent, useCallback, useEffect, useMemo, useState} from "react";
 import {EXAMPLE_MIX_PROGRAMS} from "../examples.ts";
 import {PanelBox} from "../common/Common.tsx";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, {basicSetup} from "@uiw/react-codemirror";
 import {parser} from "../../mixal/parser/parser";
 import {styleTags, tags as t} from "@lezer/highlight"
 import {HighlightStyle, LanguageSupport, LRLanguage, syntaxHighlighting} from '@codemirror/language';
@@ -117,11 +117,12 @@ function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
 }
 
 const extensions = [
+    basicSetup({tabSize: 8}),
     keymap.of(emacsStyleKeymap),
     lineNumbers(),
     EditorView.theme({
         "&": {height: "100%", width: '100%', maxWidth: '100%'},
-        ".cm-scroller": {overflow: "auto"}
+        ".cm-scroller": {overflowY: "auto"}
     }),
     syntaxHighlighting(myHighlightStyle),
     mixal(),

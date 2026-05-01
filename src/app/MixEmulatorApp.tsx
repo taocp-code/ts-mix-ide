@@ -12,6 +12,7 @@ export function MixEmulatorApp() {
 
     useEffect(() => {
         if (mixProgram !== null) {
+            mix.reset();
             mix.loadProgram(mixProgram);
         }
     }, [mixProgram]);
