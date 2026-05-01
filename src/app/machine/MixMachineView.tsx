@@ -29,38 +29,47 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
     const ioBusy = state.ioBusy;
     return <>
         {<><Tooltip title={'Step'}>
-            <IconButton sx={{color: 'blue'}} onClick={async () => {
-                await mix.step();
-            }} disabled={running || halted || ioBusy}><RedoIcon/></IconButton>
+            <span>
+                <IconButton sx={{color: 'blue'}} onClick={async () => {
+                    await mix.step();
+                }} disabled={running || halted || ioBusy}><RedoIcon/></IconButton>
+            </span>
         </Tooltip>
             <Tooltip title={running ? 'Stop' : 'Run'}>
-                <IconButton disabled={halted || ioBusy} sx={{color: running ? 'red' : 'green'}} onClick={async () => {
-                    if (!running) {
-                        await mix.runAsync(asyncStepDelayMs);
-                    } else {
-                        mix.stopAsync();
-                    }
-                }}>{running ? <PauseIcon/> : <PlayArrowIcon/>}</IconButton>
+                <span>
+                    <IconButton disabled={halted || ioBusy} sx={{color: running ? 'red' : 'green'}} onClick={async () => {
+                        if (!running) {
+                            await mix.runAsync(asyncStepDelayMs);
+                        } else {
+                            mix.stopAsync();
+                        }
+                    }}>{running ? <PauseIcon/> : <PlayArrowIcon/>}</IconButton>
+                </span>
             </Tooltip>
             <Tooltip title={"Fast Run"}>
-                <IconButton disabled={running || halted || ioBusy} onClick={async () => {
-                    await mix.runAsync(0);
-                }}><FastForwardIcon/></IconButton>
+                <span>
+                    <IconButton disabled={running || halted || ioBusy} onClick={async () => {
+                        await mix.runAsync(0);
+                    }}><FastForwardIcon/></IconButton>
+                </span>
             </Tooltip>
         </>}
         <Tooltip title={"Reset"}>
-            <IconButton sx={{color: 'maroon'}} onClick={() => {
-                setTimeout(() => {
-                    mix.reset();
-                    if (mixProgram !== null) {
-                        mix.loadProgram(mixProgram);
-                    }
-                });
-            }} disabled={running || ioBusy}><RestartAltIcon/></IconButton>
+            <span>
+                <IconButton sx={{color: 'maroon'}} onClick={() => {
+                    setTimeout(() => {
+                        mix.reset();
+                        if (mixProgram !== null) {
+                            mix.loadProgram(mixProgram);
+                        }
+                    });
+                }} disabled={running || ioBusy}><RestartAltIcon/></IconButton>
+            </span>
         </Tooltip>
         <Box>
             <Tooltip title={"Emulator Status"}>
-                <>{ioBusy && <Chip size={"small"} color={"warning"} label={"IO busy"} sx={{m: 1}}/>}
+                <Box sx={{display: "inline-flex"}}>{ioBusy &&
+                    <Chip size={"small"} color={"warning"} label={"IO busy"} sx={{m: 1}}/>}
                     {halted
                         ? <Chip size={"small"} color={"error"} label={"Halted"} sx={{m: 1}}/>
                         : (
@@ -68,7 +77,7 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
                                 ? <Chip size={"small"} color={"success"} label={"Running"} sx={{m: 1}}/>
                                 : <Chip size={"small"} color={"default"} label={"Paused"} sx={{m: 1}}/>
                         )
-                    }</>
+                    }</Box>
             </Tooltip>
             <Tooltip title={"Total real world time spent in execution."}>
                 <Chip size={"small"} color={"info"}

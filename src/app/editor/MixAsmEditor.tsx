@@ -2,7 +2,7 @@ import {EditorView, keymap, lineNumbers} from "@codemirror/view";
 import {emacsStyleKeymap} from "@codemirror/commands";
 import {compile, type MixProgram} from "../../mixal/mix-asm.ts";
 import {Box, Button, Divider, Menu, MenuItem, type SxProps, type Theme, Tooltip, Typography} from "@mui/material";
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, {type MouseEvent, useCallback, useEffect, useMemo, useState} from "react";
 import {EXAMPLE_MIX_PROGRAMS} from "../examples.ts";
 import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
@@ -57,8 +57,8 @@ interface EditorFileMenuProps {
 }
 
 function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
-    const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
         setAnchorEl(event.currentTarget);
     };
 
@@ -145,6 +145,7 @@ export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
         const t = setTimeout(() => {
             const p = compile(codeText);
             onCompile(p);
+            setCompileTimeout(null);
         }, delayMs);
         setCompileTimeout(t);
         return t;
