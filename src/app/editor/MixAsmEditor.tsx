@@ -8,7 +8,7 @@ import {PanelBox} from "../common/Common.tsx";
 import CodeMirror from "@uiw/react-codemirror";
 import {parser} from "../../mixal/parser/parser";
 import {styleTags, tags as t} from "@lezer/highlight"
-import {HighlightStyle, syntaxHighlighting, LRLanguage, LanguageSupport} from '@codemirror/language';
+import {HighlightStyle, LanguageSupport, LRLanguage, syntaxHighlighting} from '@codemirror/language';
 import {formatMixal} from "../../mixal/mixal-formatter.ts";
 
 const parserWithMetadata = parser.configure({
@@ -92,7 +92,12 @@ function EditorFileMenu({onOpenFile}: EditorFileMenuProps) {
     }, [EXAMPLE_MIX_PROGRAMS]);
 
     useEffect(() => {
-        getMixProgram('/examples/table-of-primes.ms');
+        const saved = localStorage.getItem("mixal-code");
+        if (saved !== null) {
+            onOpenFile(saved);
+        } else {
+            getMixProgram('/examples/table-of-primes.ms');
+        }
     }, []);
 
     return (<>
@@ -127,34 +132,38 @@ interface MixAsmEditorProps {
     sx?: SxProps<Theme> | undefined;
 }
 
+const COMPILE_DELAY_MS = 1000;
+
 export function MixAsmEditor({onCompile, sx}: MixAsmEditorProps) {
     const [code, setCode] = useState('');
-    const [formattedCode, setFormattedCode] = useState('');
-    const startCompile = useCallback(() => {
-        return setTimeout(() => {
-            const p = compile(formattedCode);
+    const [compileTimeout, setCompileTimeout] = useState<any>(null);
+    const handleCodeChange = useCallback((codeText: string, delayMs: number = COMPILE_DELAY_MS) => {
+        setCode(codeText);
+        if (compileTimeout !== null) {
+            clearTimeout(compileTimeout);
+        }
+        const t = setTimeout(() => {
+            const p = compile(codeText);
             onCompile(p);
-        });
-    }, [formattedCode]);
-
-    useEffect(() => {
-        const t = startCompile();
-        return () => clearTimeout(t);
-    }, [formattedCode]);
-    useEffect(() => {
-        setFormattedCode(formatMixal(code));
-    }, [code]);
-
+        }, delayMs);
+        setCompileTimeout(t);
+        return t;
+    }, []);
     return (<PanelBox sx={sx}>
         <Box sx={{flexDirection: 'row', display: 'flex', height: '24px'}}>
-            <EditorFileMenu onOpenFile={(value) => setCode(value)}/>
+            <EditorFileMenu onOpenFile={(value) => handleCodeChange(formatMixal(value), 0)}/>
+            <Button onClick={() => {
+                handleCodeChange(formatMixal(code), 0);
+            }}>Format</Button>
+            <Button onClick={() => handleCodeChange('', 0)}>New</Button>
         </Box>
         <Divider/>
         <CodeMirror style={{fontSize: '0.8rem', flexGrow: 1, height: 'calc(100% - 30px)'}}
-                    value={formattedCode}
+                    value={code}
                     extensions={extensions}
                     onChange={(value) => {
-                        setCode(value);
+                        localStorage.setItem('mixal-code', value)
+                        handleCodeChange(value);
                     }}
         />
     </PanelBox>)

@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useMemo, useState} from "react";
 import {Box, Button, Paper, Tab, Tabs} from "@mui/material";
 import {
     CARD_PUNCHER,
@@ -34,7 +34,6 @@ export const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
 
 interface MixDevicesViewProps {
     mixDeviceRegistry: MixDeviceRegistry,
-    onStateChange: (height: number) => void
 }
 
 export interface MixCommonDeviceViewProps {
@@ -112,11 +111,8 @@ export class MixDeviceConnection {
     }
 }
 
-export function MixDevicesView({mixDeviceRegistry, onStateChange}: MixDevicesViewProps) {
+export function MixDevicesView({mixDeviceRegistry}: MixDevicesViewProps) {
     const [open, setOpen] = useState(false);
-    useEffect(() => {
-        onStateChange(open ? MIX_DEVICES_UI_HEIGHT_OPEN : MIX_DEVICES_UI_HEIGHT_CLOSED);
-    }, [open]);
     const [activeDeviceId, setActiveDeviceId] = useState("18");
     const onDeviceViewActivity = (e: MixDeviceActivityEvent) => {
         if (!open) setOpen(true);

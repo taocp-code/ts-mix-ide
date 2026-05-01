@@ -135,8 +135,7 @@ export function MixMachineView({mix, mixProgram, sx}: MixMachineViewProps) {
             <Box sx={{flexDirection: 'column', display: 'flex', p: 0.5, overflowY: 'scroll'}}>
                 <MixMemoryView mix={mix}/>
             </Box>
-            <MixDevicesView mixDeviceRegistry={mix.deviceRegistry}
-                            onStateChange={(height) => console.log(height)}/>
+            <MixDevicesView mixDeviceRegistry={mix.deviceRegistry}/>
         </Stack>
     </PanelBox>)
 }

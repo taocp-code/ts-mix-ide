@@ -29,63 +29,79 @@ export interface MixProgram {
 // @ts-ignore
 type Op = '+' | '-' | '*' | '/' | '//' | ':';
 type SymTable = Record<string, number>;
+
 interface Literal {
     value: number;
     op: MixWord;
 }
+
 interface Token {
-    value: Op|string|number;
-    type: 'op'|'symbol'|'number';
+    value: Op | string | number;
+    type: 'op' | 'symbol' | 'number';
 }
 
 // @ts-ignore
 function isOp(s: string): boolean {
     return ['+', '-', '*', '/', '//', ':'].indexOf(s) !== -1;
 }
+
 function isDigit(s: string): boolean {
     return /\d/.test(s);
 }
+
 function isAlpabet(s: string): boolean {
     return /[a-z]/i.test(s);
 }
+
 function isEmpty(s: string): boolean {
     return s.length === 0;
 }
+
 function isLocalSymbol(s: string, define: boolean = true): boolean {
     return define ? /\dh/i.test(s) : /\d[fb]/i.test(s);
 }
+
 function isDefined(v: any): boolean {
     return v !== undefined;
 }
 
 interface EvalContext {
+    lineNo: number;
     counter: number;
     symbols: SymTable;
-    locals: Record<number, number[]>;
+    locals: Record<number, LocalSymbol[]>;
     unresolvedReferences: string[];
 }
-type OptionalNumber = number|undefined;
+
+type OptionalNumber = number | undefined;
+
 abstract class Expr {
     eval(_: EvalContext): OptionalNumber {
         return undefined;
     }
 }
+
 class NumberExpr extends Expr {
     private _value: number;
+
     constructor(value: number) {
         super();
         this._value = value;
     }
+
     eval(_: EvalContext): OptionalNumber {
         return this._value;
     }
 }
-class SymbolExpr extends Expr{
+
+class SymbolExpr extends Expr {
     private _sym: string;
+
     constructor(symbol: string) {
         super();
         this._sym = symbol;
     }
+
     eval(ctx: EvalContext): OptionalNumber {
         if (isLocalSymbol(this._sym, false)) {
             // referencing a local symbol
@@ -107,13 +123,13 @@ class SymbolExpr extends Expr{
             if (dir === 'f') {
                 // find smallest value greater than counter
                 for (let i = values.length - 1; i >= 0; i--) {
-                    if (values[i] > ctx.counter) value = values[i];
+                    if (values[i].lineNo > ctx.lineNo) value = values[i].value;
                     else break;
                 }
             } else if (dir === 'b') {
                 // find largest value smaller than counter
                 for (let i = 0; i < values.length; i++) {
-                    if (values[i] < ctx.counter) value = values[i];
+                    if (values[i].lineNo < ctx.lineNo) value = values[i].value;
                     else break;
                 }
             }
@@ -124,20 +140,25 @@ class SymbolExpr extends Expr{
         return value;
     }
 }
-class StarExpr extends Expr{
+
+class StarExpr extends Expr {
     eval(ctx: EvalContext): OptionalNumber {
         return ctx.counter;
     }
 }
+
 type AtomicExpr = NumberExpr | SymbolExpr | StarExpr;
-class UnaryExpr extends Expr{
+
+class UnaryExpr extends Expr {
     private _sign: string;
     private _expr: AtomicExpr;
-    constructor(sign: '+'|'-', expr: AtomicExpr) {
+
+    constructor(sign: '+' | '-', expr: AtomicExpr) {
         super();
         this._sign = sign;
         this._expr = expr;
     }
+
     eval(ctx: EvalContext): OptionalNumber {
         const v = this._expr.eval(ctx);
         if (isDefined(v)) {
@@ -145,68 +166,87 @@ class UnaryExpr extends Expr{
         }
     }
 }
+
 class BinaryExpr extends Expr {
     private _lhs: Expr;
     private _op: Op;
     private _rhs: Expr;
+
     constructor(lhs: Expr, op: Op, rhs: Expr) {
         super();
         this._lhs = lhs;
         this._op = op;
         this._rhs = rhs;
     }
+
     eval(ctx: EvalContext): OptionalNumber {
         const lv = this._lhs.eval(ctx);
         const rv = this._rhs.eval(ctx);
         if (isDefined(lv) && isDefined(rv)) {
             switch (this._op) {
-                case '+': return lv! + rv!;
-                case '-': return lv! - rv!;
-                case '*': return lv! * rv!;
-                case '/': return Math.floor(lv! / rv!);
-                case '//': return Math.floor(Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) * lv! / rv!);
-                case ':': return lv! * 8 + rv!;
+                case '+':
+                    return lv! + rv!;
+                case '-':
+                    return lv! - rv!;
+                case '*':
+                    return lv! * rv!;
+                case '/':
+                    return Math.floor(lv! / rv!);
+                case '//':
+                    return Math.floor(Math.pow(MIX_BYTE_MAX, MIX_WORD_SIZE) * lv! / rv!);
+                case ':':
+                    return lv! * 8 + rv!;
             }
         }
     }
 }
+
 class OptExpr extends Expr {
     private readonly _expr?: Expr;
+
     constructor(expr?: Expr) {
         super();
         this._expr = expr;
     }
+
     eval(ctx: EvalContext): OptionalNumber {
         return this._expr?.eval(ctx);
     }
 }
+
 class AExpr extends OptExpr {
     readonly literal: boolean;
+
     constructor(literal: boolean, expr?: Expr) {
         super(expr);
         this.literal = literal;
     }
 }
+
 class IExpr extends OptExpr {
     constructor(expr?: Expr) {
         super(expr);
     }
 }
+
 class FExpr extends OptExpr {
     constructor(expr?: Expr) {
         super(expr);
     }
 }
+
 class WValueExpr extends Expr {
     private _prev?: WValueExpr;
     private _v: Expr;
     private _f: FExpr;
+
     constructor(v: Expr, f: FExpr, prev?: WValueExpr) {
         super();
         this._prev = prev;
         this._v = v;
         this._f = f;
     }
+
     eval(ctx: EvalContext): OptionalNumber {
         const w: MixWord = new MixWord(this._prev?.eval(ctx));
         const v = new MixWord(this._v.eval(ctx));
@@ -220,11 +260,13 @@ export class Parser {
     private readonly _expr: string;
     private _i: number;
     private _n: number;
+
     constructor(expr: string) {
         this._expr = expr;
         this._i = 0;
         this._n = expr.length;
     }
+
     parseAExpr(): AExpr {
         if (!this.hasNext() || this.peek([',', '('])) return new AExpr(false, new NumberExpr(0));
         if (this.char() === '=') {
@@ -237,12 +279,14 @@ export class Parser {
         const expr = this.parseExpr();
         return new AExpr(false, expr);
     }
+
     parseIExpr(): IExpr {
         if (!this.hasNext() || this.peek(['('])) return new IExpr();
         this.consume(',');
         const expr = this.parseExpr();
         return new IExpr(expr);
     }
+
     parseFExpr(): FExpr {
         if (!this.hasNext() || this.peek([',', '='])) return new FExpr();
         this.consume('(');
@@ -250,6 +294,7 @@ export class Parser {
         this.consume(')');
         return new FExpr(expr);
     }
+
     parseWValueExpr(prev?: WValueExpr): WValueExpr {
         const expr = this.parseExpr();
         const f = this.parseFExpr();
@@ -260,42 +305,41 @@ export class Parser {
         }
         return wexpr;
     }
+
     private parseExpr(): Expr {
-        let expr: Expr|null = null;
-        let op: Op|null = null;
-        let unaryOp: '+'|'-'|null = null;
+        let expr: Expr | null = null;
+        let op: Op | null = null;
+        let unaryOp: '+' | '-' | null = null;
         while (this.hasNext() && !this.peek([',', '(', ')', '=', ' '])) {
             const token = this.next();
             switch (token.type) {
-                case 'number':
-                    {
-                        let t: Expr = new NumberExpr(token.value as number);
-                        if (unaryOp !== null) {
-                            t = new UnaryExpr(unaryOp, t);
-                            unaryOp = null;
-                        }
-                        if (expr !== null && op !== null) {
-                            expr = new BinaryExpr(expr, op, t);
-                            op = null;
-                        } else {
-                            expr = t;
-                        }
+                case 'number': {
+                    let t: Expr = new NumberExpr(token.value as number);
+                    if (unaryOp !== null) {
+                        t = new UnaryExpr(unaryOp, t);
+                        unaryOp = null;
                     }
+                    if (expr !== null && op !== null) {
+                        expr = new BinaryExpr(expr, op, t);
+                        op = null;
+                    } else {
+                        expr = t;
+                    }
+                }
                     break;
-                case 'symbol':
-                    {
-                        let t: Expr = new SymbolExpr(token.value as string);
-                        if (unaryOp !== null) {
-                            t = new UnaryExpr(unaryOp, t);
-                            unaryOp = null;
-                        }
-                        if (expr !== null && op !== null) {
-                            expr = new BinaryExpr(expr, op, t);
-                            op = null;
-                        } else {
-                            expr = t;
-                        }
+                case 'symbol': {
+                    let t: Expr = new SymbolExpr(token.value as string);
+                    if (unaryOp !== null) {
+                        t = new UnaryExpr(unaryOp, t);
+                        unaryOp = null;
                     }
+                    if (expr !== null && op !== null) {
+                        expr = new BinaryExpr(expr, op, t);
+                        op = null;
+                    } else {
+                        expr = t;
+                    }
+                }
                     break;
                 case 'op':
                     if (expr === null || op !== null) {
@@ -312,7 +356,7 @@ export class Parser {
                         if (token.value !== '+' && token.value != '-') {
                             throw new Error('Unary operator must be + or -.');
                         }
-                        unaryOp = token.value as '+'|'-';
+                        unaryOp = token.value as '+' | '-';
                     } else {
                         op = token.value as Op;
                     }
@@ -322,19 +366,24 @@ export class Parser {
         if (expr === null) throw new Error('No expression found.');
         return expr;
     }
+
     private char(): string {
         return this._expr[this._i];
     }
+
     private advance() {
         this._i++;
     }
+
     private peek(expected: string[]) {
         return !!expected.find(c => c === this.char());
     }
+
     private consume(expected: string) {
         if (this.char() === expected) this.advance();
         else throw new Error(`Unknown char ${this.char()} at ${this._i} in ${this._expr}, expected "${expected}"`);
     }
+
     private next(): Token {
         if (!this.hasNext()) throw new Error(`No more input.`);
         const expr = this._expr;
@@ -366,7 +415,7 @@ export class Parser {
             }
             this._i = i;
             const value = isNumber ? parseInt(chars.join('')) : chars.join('');
-            return { value, type: isNumber ? 'number' : 'symbol' };
+            return {value, type: isNumber ? 'number' : 'symbol'};
         }
         if (isAlpabet(ch0)) {
             const chars: string[] = [ch0];
@@ -378,6 +427,7 @@ export class Parser {
         }
         throw new Error(`Unknown input at ${i}: ${ch0} in "${this._expr}".`);
     }
+
     private hasNext(): boolean {
         return this._i < this._n;
     }
@@ -386,21 +436,27 @@ export class Parser {
 
 interface UnresolvedReference {
     // counter value at the moment where the op is defined.
-    counter: number,
-    op: MixWord,
-    aExpr: AExpr,
-    iExpr: IExpr,
-    fExpr: FExpr,
-    undefinedSymbols: string[],
+    lineNo: number;
+    counter: number;
+    op: MixWord;
+    aExpr: AExpr;
+    iExpr: IExpr;
+    fExpr: FExpr;
+    undefinedSymbols: string[];
+}
+
+interface LocalSymbol {
+    lineNo: number;
+    value: number;
 }
 
 class MIXAssembler {
     private readonly _source;
     private readonly _symbols: SymTable;
-    private readonly _locals: Record<number, number[]>;
+    private readonly _locals: Record<number, LocalSymbol[]>;
     private readonly _literals: Literal[];
     private _unresolvedReferences: UnresolvedReference[];
-    private _mixProgram: MixProgram|undefined;
+    private _mixProgram: MixProgram | undefined;
     private _counter: number; // the unit counter referred to as '*'
     // @ts-ignore
     private _line: string;
@@ -473,15 +529,34 @@ class MIXAssembler {
             } else if (op === 'END') {
                 for (const lit of this._literals) {
                     cur.data.push(new MixWord(lit.value));
-                    cur.lines.push({lineNo: this._lineNo, line: `CON ${lit.value}`, loc: '', op: 'CON', addr: `${lit.value}`});
+                    cur.lines.push({
+                        lineNo: this._lineNo,
+                        line: `CON ${lit.value}`,
+                        loc: '',
+                        op: 'CON',
+                        addr: `${lit.value}`
+                    });
                     lit.op.store(new MixWord(this._counter++), F_OP_ADDR);
                 }
                 this.defineSymbol(loc, this._counter);
+                const defined = new Set<string>();
                 for (const {undefinedSymbols} of this._unresolvedReferences) {
                     for (const symbol of undefinedSymbols) {
+                        if (defined.has(symbol)) continue;
+                        defined.add(symbol);
                         cur.data.push(new MixWord());
-                        cur.lines.push({lineNo: this._lineNo, line: `${symbol} CON 0`, loc: symbol, op: 'CON', addr: '0'});
-                        this.defineSymbol(symbol, this._counter++);
+                        cur.lines.push({
+                            lineNo: this._lineNo,
+                            line: `${symbol} CON 0`,
+                            loc: symbol,
+                            op: 'CON',
+                            addr: '0'
+                        });
+                        try {
+                            this.defineSymbol(symbol, this._counter++);
+                        } catch (err) {
+                            console.warn(err);
+                        }
                     }
                 }
                 this.tryFixUnresolvedReferences()
@@ -507,6 +582,7 @@ class MIXAssembler {
                             iExpr,
                             op: w,
                             counter: this._counter,
+                            lineNo: this._lineNo,
                             undefinedSymbols: ctx.unresolvedReferences,
                         });
                     }
@@ -534,18 +610,21 @@ class MIXAssembler {
 
     get context(): EvalContext {
         return {
+            lineNo: this._lineNo,
             counter: this._counter,
             symbols: this._symbols,
             locals: this._locals,
             unresolvedReferences: [],
         }
     }
+
     private defineLocal(sym: string, value: number) {
         if (!isLocalSymbol(sym)) return;
         const d = parseInt(sym[0]);
         if (!(d in this._locals)) this._locals[d] = [];
-        this._locals[d].push(value);
+        this._locals[d].push({lineNo: this._lineNo, value});
     }
+
     private defineSymbol(sym: string, value: number) {
         if (isEmpty(sym)) return;
         if (isLocalSymbol(sym)) {
@@ -557,16 +636,18 @@ class MIXAssembler {
         }
         this._symbols[sym] = value;
     }
+
     private tryFixUnresolvedReferences() {
         const newList: UnresolvedReference[] = [];
-        for (const {counter, op, aExpr, iExpr, fExpr, undefinedSymbols} of this._unresolvedReferences) {
+        for (const {counter, lineNo, op, aExpr, iExpr, fExpr, undefinedSymbols} of this._unresolvedReferences) {
             const ctx = this.context;
             ctx.counter = counter;
+            ctx.lineNo = lineNo;
             const a = aExpr.eval(ctx);
             const i = iExpr.eval(ctx) || 0;
             const f = fExpr.eval(ctx) || op.load(F_OP_F).value;
             if (ctx.unresolvedReferences.length > 0) {
-                newList.push({counter, op, aExpr, iExpr, fExpr, undefinedSymbols});
+                newList.push({counter, lineNo, op, aExpr, iExpr, fExpr, undefinedSymbols});
             } else {
                 op.store(new MixWord(a), F_OP_ADDR);
                 op.store(new MixWord(i), F_OP_I);
