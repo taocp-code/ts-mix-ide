@@ -63,7 +63,7 @@ function MixMachineController({mix, mixProgram}: MixMachineControllerProps) {
                             mix.loadProgram(mixProgram);
                         }
                     });
-                }} disabled={running || ioBusy}><RestartAltIcon/></IconButton>
+                }} disabled={running}><RestartAltIcon/></IconButton>
             </span>
         </Tooltip>
         <Box>

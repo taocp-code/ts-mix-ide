@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Box, RadioGroup, TextField, Typography} from "@mui/material";
+import {Box, FormControlLabel, Radio, RadioGroup, TextField, Typography} from "@mui/material";
 import type {MixCommonDeviceViewProps} from "./MixDevicesView.tsx";
 import {clean} from "../../emulator/mix-chars.ts";
 
@@ -18,7 +18,7 @@ export function MixCardReader({connection}: MixCardReaderProps) {
     const [buffer, setBuffer] = useState<string>("");
     const [pendingReads, setPendingReads] = useState<PendingRead[]>([]);
     const [text, setText] = useState('');
-    const [mode, setMode] = useState<"byte" | "word">("word");
+    const [mode, setMode] = useState<string>("word");
 
     const maxTextLength = mode === 'word' ? 16 : 80;
 
@@ -61,12 +61,14 @@ export function MixCardReader({connection}: MixCardReaderProps) {
 
     const pendingReadBytes = pendingReads.map(r => r.n).reduce((a, b) => a + b, 0);
     return (<Box>
-        <RadioGroup value={mode}>
-        </RadioGroup>
         <Typography sx={{fontFamily: 'monospace'}}>Buffered: ({buffer.length})</Typography>
         <Box sx={{whiteSpace: 'pre'}}>{buffer}</Box>
         <Typography>Pending Read Bytes: {pendingReadBytes}</Typography>
         <Typography>Remain: {pendingReadBytes - buffer.length}</Typography>
+        <RadioGroup row={true} value={mode} onChange={(e) => setMode(e.target.value)}>
+            <FormControlLabel control={<Radio size={"small"}/>} label={"Byte"} value={"byte"}/>
+            <FormControlLabel control={<Radio size={"small"}/>} label={"Word (5 bytes)"} value={"word"}/>
+        </RadioGroup>
         <TextField label={"Type Here"} fullWidth={true} value={text} variant={"standard"} size={"small"}
                    sx={{fontFamily: 'monospace'}}
                    onChange={(e) => {

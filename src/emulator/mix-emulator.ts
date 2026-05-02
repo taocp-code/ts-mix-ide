@@ -138,7 +138,7 @@ export class MixEmulator {
         this._profile = {};
         this._error = undefined;
         this._deviceRegistry.devices.forEach(ent => {
-            ent.device.busy = false;
+            ent.device.reset();
         })
         MixWord.setEmitChange(true);
         this.emitStateChange(true);

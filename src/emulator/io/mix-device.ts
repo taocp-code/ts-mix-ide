@@ -165,6 +165,7 @@ export interface MixDevice {
     ioc: (m: number, rX: number) => Promise<void>;
     read: (rX: number, sink: MixWordSink) => Promise<void>;
     write: (rX: number, words: MixWordSource) => Promise<void>;
+    reset: () => Promise<void>;
 }
 
 export abstract class AbstractMixDevice implements MixDevice {
@@ -174,6 +175,7 @@ export abstract class AbstractMixDevice implements MixDevice {
     private readonly _iocHandler: IocHandler;
     private _id?: number;
     private _busy: boolean;
+    private _promises: Set<Function>;
 
     constructor(type: MixDeviceType, blockSize: number, mode: MixDeviceMode, iocHandler: IocHandler = () => Promise.resolve()) {
         this._type = type;
@@ -182,25 +184,47 @@ export abstract class AbstractMixDevice implements MixDevice {
         this._iocHandler = iocHandler;
         this._id = undefined;
         this._busy = false;
+        this._promises = new Set();
     }
 
     async read(rX: number, sink: MixWordSink): Promise<void> {
         if (!this.canRead) {
             return Promise.reject(new Error(`Device ${this.type} doesn't support read operation.`));
         }
-        const words = await this.readInternal(rX);
-        await sink(words);
+        const op = async () => {
+            const words = await this.readInternal(rX);
+            await sink(words);
+        };
+        return new Promise((resolve, reject) => {
+            this._promises.add(reject);
+            resolve(op().finally(() => {
+                this._promises.delete(reject);
+            }));
+        });
+
     }
 
     async write(rX: number, words: MixWordSource): Promise<void> {
         if (!this.canWrite) {
             return Promise.reject(new Error(`Device ${this.type} doesn't support write operation.`));
         }
-        await this.writeInternal(rX, words);
+        const op = async () => await this.writeInternal(rX, words);
+        return new Promise((resolve, reject) => {
+            this._promises.add(reject);
+            resolve(op().finally(() => {
+                this._promises.delete(reject);
+            }));
+        });
     }
 
     async ioc(m: number, rX: number): Promise<void> {
-        await this._iocHandler(m, rX);
+        const op = async () => await this._iocHandler(m, rX);
+        return new Promise((resolve, reject) => {
+            this._promises.add(reject);
+            resolve(op().finally(() => {
+                this._promises.delete(reject);
+            }))
+        });
     }
 
     async waitUntilReady(waitMs: number = 5): Promise<void> {
@@ -264,6 +288,12 @@ export abstract class AbstractMixDevice implements MixDevice {
 
     get canWrite(): boolean {
         return this.mode !== MixDeviceMode.READ_ONLY;
+    }
+
+    async reset() {
+        this._busy = false;
+        this._promises.forEach(fn => fn());
+        this._promises.clear();
     }
 }
 
