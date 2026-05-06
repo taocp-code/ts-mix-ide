@@ -28,9 +28,7 @@ import type {MixWord} from "../../emulator/mix-word.ts";
 import {MixLinePrinter} from "./MixLinePrinter.tsx";
 import {MixCardReader} from "./MixCardReader.tsx";
 import {MixCardPuncher} from "./MixCardPuncher.tsx";
-
-export const MIX_DEVICES_UI_HEIGHT_OPEN = 600;
-export const MIX_DEVICES_UI_HEIGHT_CLOSED = 32;
+import {MixTypewriter} from "./MixTypewriter.tsx";
 
 interface MixDevicesViewProps {
     mixDeviceRegistry: MixDeviceRegistry,
@@ -169,6 +167,9 @@ export function MixDevicesView({mixDeviceRegistry}: MixDevicesViewProps) {
                     break;
                 case CARD_PUNCHER:
                     views.set(conn.deviceId.toString(), <MixCardPuncher connection={conn}/>);
+                    break;
+                case TYPE_WRITER:
+                    views.set(conn.deviceId.toString(), <MixTypewriter connection={conn}/>);
                     break;
             }
         })

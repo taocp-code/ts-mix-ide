@@ -387,10 +387,6 @@ export class TeletypeWriter extends AbstractMixDevice {
 
 export type DeviceRegistry = Record<number, MixDevice>;
 
-export type RegisterDeviceFn = (device: MixDevice) => number;
-
-export type UnregisterDeviceFn = (device: MixDevice) => void;
-
 export interface MixDeviceEntry {
     id: number;
     device: MixDevice;
@@ -426,15 +422,6 @@ export class MixDeviceRegistry implements DeviceRegistry {
         device.id = id;
         this._devices.push({id, device});
         return id;
-    }
-
-    unregister(device: MixDevice): void {
-        const entry = this._devices.find((entry) => entry.device === device);
-        if (!entry) return;
-        delete this[entry.id];
-        device.id = undefined;
-        this._mixDeviceIds[entry.device.type].unshift(entry.id);
-        this._devices = this._devices.filter((e) => e !== entry);
     }
 
     get devices(): MixDeviceEntry[] {

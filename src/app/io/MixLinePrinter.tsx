@@ -50,7 +50,6 @@ export function MixLinePrinter({connection}: MixLinePrinterProps) {
             const lines = [...(prev?.lines || []), text];
             return {lines};
         });
-        console.log('Updated lines state');
     }, []);
     useEffect(() => {
         connection.setIocHandler(onNewPage);
